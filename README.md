@@ -32,3 +32,9 @@ dari internet; tanpa koneksi, game tetap bisa dimainkan tanpa suara.
 ## Catatan konten
 Teks Arab dan arti per kata ditulis untuk prototipe. **Sebelum dipakai luas, minta
 ustadz/guru Al-Qur'an memeriksa** teks, arti per kata, terjemahan, dan cerita.
+
+## Main online (GitHub Pages)
+Alamat: https://hpputro.github.io/JuzAmmaGame/
+
+Pengaturan (sekali saja): **Settings → Pages → Build and deployment → Source: Deploy from a branch**,
+pilih branch utama repo dan folder `/ (root)`, lalu **Save**.
