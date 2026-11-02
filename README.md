@@ -8,8 +8,9 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
 - **⛵ Mulai Berlayar** – jelajahi pulau satu per satu; tiap pulau berisi 9 tahap berurutan
   dan pulau berikutnya terbuka setelah pulau sebelumnya selesai.
 - **🧭 Pelayaran Mandiri** – semua surat dan semua aktivitas terbuka tanpa prasyarat.
-  Pilih surat, lalu pilih aktivitas mana saja. Hasil di mode ini tidak mengubah bintang,
-  pulau yang terbuka, atau koleksi.
+  Pilih surat, lalu pilih aktivitas mana saja. Menu aktivitas menandai mana yang sudah/belum
+  dikerjakan (kuis menampilkan hasil terakhirnya), dan ada menu **9. Laporan** untuk rekap
+  semua kuis surat itu. Hasil di mode ini tidak mengubah bintang, pulau yang terbuka, atau koleksi.
 - **🧺 Harta Laut** – koleksi oleh-oleh dari pulau yang sudah diselesaikan.
 
 ## Alur per surat
@@ -26,7 +27,9 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
    pilih kata yang tepat. Arti ayat baru muncul setelah jawaban benar.
 7. **Kuis Susun Ayat** – susun potongan kata menjadi ayat yang utuh.
 8. **Kuis Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
-9. **Hasil** – 1–3 bintang + hadiah *Harta Laut* untuk koleksi.
+9. **Laporan** – 1–3 bintang, hadiah *Harta Laut*, dan laporan tiap kuis: jumlah soal,
+   soal yang benar langsung, dan jumlah salah (satu soal bisa salah lebih dari sekali),
+   plus rincian per soal.
 
 Jumlah soal kuis (separuh = dibulatkan ke atas):
 

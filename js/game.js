@@ -13,7 +13,8 @@
   const SAVE_KEY = "pelayaran-juz-amma-v1";
   const LISTEN_KEY = "pelayaran-juz-amma-listen-v1";
   const STAGES = ["Pengantar", "Dengarkan Utuh", "Kenali Kata", "Harta Terpendam",
-    "Kuis Lanjut Ayat", "Kuis Kata yang Hilang", "Kuis Susun Ayat", "Kuis Pahami Arti"];
+    "Kuis Lanjut Ayat", "Kuis Kata yang Hilang", "Kuis Susun Ayat", "Kuis Pahami Arti", "Laporan"];
+  const QUIZ_STAGES = [5, 6, 7, 8];
 
   // ---------- penyimpanan (aman bila storage diblokir) ----------
   function load(key, fallback) {
@@ -23,6 +24,9 @@
     try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* abaikan */ }
   }
   const progress = load(SAVE_KEY, {}); // { [surahId]: { stars: n } }
+  // Catatan Pelayaran Mandiri: { [surahId]: { [tahap]: { times, questions?, mistakes?, items? } } }
+  const FREE_KEY = "pelayaran-juz-amma-free-v1";
+  const freeLog = load(FREE_KEY, {});
   const listenPrefs = Object.assign({ ayahRepeat: 1, packRepeat: 1 }, load(LISTEN_KEY, {}));
 
   const starsOf = (s) => (progress[s.id] && progress[s.id].stars) || 0;
@@ -67,6 +71,58 @@
     return out;
   }
   const otherSurahs = (s) => SURAHS.filter((x) => x !== s);
+
+  // ---------- statistik kuis (per soal; satu soal bisa salah lebih dari sekali) ----------
+  function newStats() {
+    const st = {};
+    QUIZ_STAGES.forEach((k) => { st[k] = { questions: 0, mistakes: 0, items: [] }; });
+    return st;
+  }
+  const newSession = (s, free) => ({ s, mistakes: 0, questions: 0, free: !!free, stats: newStats() });
+  function beginQ(ses, stage, label) {
+    const item = { label, wrong: 0 };
+    ses.stats[stage].items.push(item);
+    ses.stats[stage].questions++;
+    ses.questions++;
+    return item;
+  }
+  function wrongQ(ses, stage, item) {
+    item.wrong++;
+    ses.stats[stage].mistakes++;
+    ses.mistakes++;
+  }
+
+  /** Tabel laporan kuis. `data` = { [tahap]: {questions, mistakes, items} | undefined }. */
+  function reportHtml(data, stages) {
+    let rows = "", details = "";
+    let tq = 0, tm = 0, tf = 0;
+    stages.forEach((k) => {
+      const d = data[k];
+      const name = STAGES[k - 1].replace("Kuis ", "");
+      if (!d || !d.questions) {
+        rows += `<tr class="todo"><td>${esc(name)}</td><td colspan="3">Belum dikerjakan</td></tr>`;
+        return;
+      }
+      const first = d.items.filter((it) => it.wrong === 0).length;
+      tq += d.questions; tm += d.mistakes; tf += first;
+      rows += `<tr><td>${esc(name)}</td><td>${d.questions}</td><td>${first}</td><td class="${d.mistakes ? "bad" : "good"}">${d.mistakes}</td></tr>`;
+      const wrongItems = d.items.filter((it) => it.wrong > 0);
+      details += `<details class="report-detail"><summary>${esc(name)} · ${d.questions} soal · ${d.mistakes}× salah</summary>
+        ${wrongItems.length
+          ? `<ul>${d.items.map((it) => `<li class="${it.wrong ? "bad" : "good"}">${esc(it.label)} — ${it.wrong ? `salah ${it.wrong}×` : "benar langsung ✓"}</li>`).join("")}</ul>`
+          : `<p class="good">Semua soal benar di percobaan pertama 🎉</p>`}
+      </details>`;
+    });
+    if (stages.length > 1) rows += `<tr class="total"><td>Total</td><td>${tq}</td><td>${tf}</td><td>${tm}</td></tr>`;
+    return `<div class="card report">
+      <table>
+        <thead><tr><th>Kuis</th><th>Soal</th><th>Benar langsung</th><th>Salah</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="report-note">"Salah" menghitung setiap jawaban keliru, jadi satu soal bisa salah lebih dari sekali.</p>
+      ${details}
+    </div>`;
+  }
 
   let toastTimer;
   function toast(msg) {
@@ -118,6 +174,7 @@
   // ---------- render helper ----------
   function render(html, bind) {
     runId++;
+    toastEl.classList.remove("show");
     audio.onended = null;
     audio.pause();
     app.innerHTML = html;
@@ -226,20 +283,36 @@
   }
 
   function activityMenu(s) {
+    const log = freeLog[s.id] || {};
     let list = "";
+    let done = 0;
     ACTIVITIES.forEach((a, i) => {
-      list += `<button class="activity" data-i="${i}">
+      const k = i + 1;
+      const e = log[k];
+      if (e) done++;
+      let status;
+      if (!e) status = '<span class="status-tag todo">Belum</span>';
+      else if (QUIZ_STAGES.includes(k)) status = `<span class="status-tag ${e.mistakes ? "warn" : "ok"}">✓ ${e.questions} soal · ${e.mistakes}× salah</span>`;
+      else status = '<span class="status-tag ok">✓ Sudah</span>';
+      list += `<button class="activity ${e ? "done" : ""}" data-i="${i}">
         <span class="emo">${a.emoji}</span>
-        <span><b>${i + 1}. ${esc(STAGES[i])}</b><small>${esc(a.desc)}</small></span>
+        <span class="act-text"><b>${k}. ${esc(STAGES[i])}</b><small>${esc(a.desc)}</small>${status}</span>
       </button>`;
     });
-    render(`${topbar("Pelayaran Mandiri", `Surat ${s.name}`)}
+    list += `<button class="activity report-btn" id="report">
+        <span class="emo">📊</span>
+        <span class="act-text"><b>9. Laporan</b><small>Rekap semua kuis surat ini</small></span>
+      </button>`;
+    render(`${topbar("Pelayaran Mandiri", `Surat ${s.name}`, `${done}/${ACTIVITIES.length}`)}
+      ${progressBar(ACTIVITIES.length, -1)}
       <p>Pilih aktivitas. Tidak harus berurutan!</p>
       <div class="free-list">${list}</div>`, () => {
       bindBack(freeMap);
-      $$(".activity").forEach((el) => el.addEventListener("click", () => {
+      $$(".progress span").forEach((b, i) => { if (log[i + 1]) b.className = "done"; });
+      on("#report", () => freeReport(s));
+      $$(".activity[data-i]").forEach((el) => el.addEventListener("click", () => {
         const stage = Number(el.dataset.i) + 1;
-        ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true });
+        ACTIVITIES[stage - 1].start(newSession(s, true));
       }));
     });
   }
@@ -247,6 +320,7 @@
   /** Pindah ke tahap berikutnya (mode berlayar) atau selesaikan aktivitas (mode mandiri). */
   function go(ses, finishedStage, nextFn) {
     if (!ses.free) { nextFn(); return; }
+    logFree(ses, finishedStage);
     if (finishedStage >= 5) { freeQuizDone(ses, finishedStage); return; }
     activityMenu(ses.s);
     toast(`✅ ${STAGES[finishedStage - 1]} selesai!`);
@@ -256,18 +330,57 @@
   /** Tombol kembali: ke peta (mode berlayar) atau ke menu aktivitas (mode mandiri). */
   function exit(ses) { return ses.free ? activityMenu(ses.s) : map(); }
 
+  function freeReport(s) {
+    const log = freeLog[s.id] || {};
+    let checklist = "";
+    [1, 2, 3, 4].forEach((k) => {
+      checklist += `<li class="${log[k] ? "good" : "todo"}">${log[k] ? "✓" : "○"} ${esc(STAGES[k - 1])}${log[k] ? ` <small>(${log[k].times}×)</small>` : ""}</li>`;
+    });
+    render(`${topbar("Pelayaran Mandiri · Laporan", `Surat ${s.name}`)}
+      <div class="card report">
+        <h3>📚 Aktivitas belajar</h3>
+        <ul class="checklist">${checklist}</ul>
+      </div>
+      <h3 class="report-title">📊 Hasil kuis terakhir</h3>
+      ${reportHtml(log, QUIZ_STAGES)}
+      <div class="spacer"></div>
+      <button class="btn secondary" id="reset">↺ Hapus progres surat ini</button>`, () => {
+      bindBack(() => activityMenu(s));
+      on("#reset", () => {
+        let ok = true;
+        try { ok = window.confirm(`Hapus progres Pelayaran Mandiri surat ${s.name}?`); } catch (e) { /* abaikan */ }
+        if (!ok) return;
+        delete freeLog[s.id];
+        save(FREE_KEY, freeLog);
+        freeReport(s);
+      });
+    });
+  }
+
+  /** Simpan hasil terakhir sebuah aktivitas di Pelayaran Mandiri. */
+  function logFree(ses, stage) {
+    const bySurah = freeLog[ses.s.id] = freeLog[ses.s.id] || {};
+    const prev = bySurah[stage] || {};
+    const entry = { times: (prev.times || 0) + 1 };
+    if (QUIZ_STAGES.includes(stage)) Object.assign(entry, JSON.parse(JSON.stringify(ses.stats[stage])));
+    bySurah[stage] = entry;
+    save(FREE_KEY, freeLog);
+  }
+
   function freeQuizDone(ses, stage) {
-    const { s, mistakes, questions } = ses;
+    const { s } = ses;
+    const { mistakes } = ses.stats[stage];
     render(`<section class="screen result">
       <h2>${esc(STAGES[stage - 1])} selesai!</h2>
       <div class="big-stars">${mistakes === 0 ? "🏆" : "👍"}</div>
       <p>${mistakes === 0 ? "Tanpa kesalahan! Masya Allah!" : "Bagus! Terus berlatih ya."}<br>
-        <small>Surat ${esc(s.name)} · ${questions} soal · ${mistakes} kesalahan</small></p>
+        <small>Surat ${esc(s.name)}</small></p>
+      ${reportHtml(ses.stats, [stage])}
       <div class="spacer"></div>
       <button class="btn" id="again">↻ Ulangi kuis ini</button>
       <button class="btn secondary" id="menu">Pilih aktivitas lain</button>
     </section>`, () => {
-      on("#again", () => ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true }));
+      on("#again", () => ACTIVITIES[stage - 1].start(newSession(s, true)));
       on("#menu", () => activityMenu(s));
     });
   }
@@ -276,8 +389,7 @@
   // ALUR SATU SURAT
   // =====================================================================
   function startSurah(s) {
-    const ses = { s, mistakes: 0, questions: 0 };
-    story(ses, 0);
+    story(newSession(s), 0);
   }
 
   // ---- 1. Pengantar ----
@@ -535,7 +647,7 @@
       }
       $$("[data-play]").forEach((b) => b.addEventListener("click", () => play(opts[Number(b.dataset.play)].audio)));
       let solved = false;
-      ses.questions++;
+      const rec = beginQ(ses, stage, q.label);
       $$(".option").forEach((el) => el.addEventListener("click", () => {
         if (solved) return;
         if (opts[Number(el.dataset.i)].correct) {
@@ -545,7 +657,7 @@
           toast("✅ Benar! Masya Allah!");
           if (q.onCorrect) q.onCorrect();
         } else {
-          ses.mistakes++;
+          wrongQ(ses, stage, rec);
           el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
           toast("Hampir! Coba lagi 🙂");
         }
@@ -576,6 +688,7 @@
         correct: ok
       });
       return {
+        label: `Ayat ${a + 1} → ${a + 2}`,
         prompt: `<p class="q-label">Dengarkan ayat ${a + 1}. Ayat berikutnya adalah…</p>
           <p class="arabic">${esc(arText(s.ayahs[a]))}</p>
           <p class="latin">${esc(latin(s.ayahs[a]))}</p>`,
@@ -606,6 +719,7 @@
       const ar = ayah.words.map((w, i) => i === blank ? '<span class="blank">؟</span>' : esc(w[0])).join(" ");
       const lt = ayah.words.map((w, i) => i === blank ? '<span class="blank">___</span>' : esc(w[2])).join(" ");
       return {
+        label: `Ayat ${a + 1}`,
         prompt: `<p class="q-label">Ayat ${a + 1}: kata apa yang hilang?</p>
           <p class="arabic" id="q-ar">${ar}</p>
           <p class="latin" id="q-lt">${lt}</p>
@@ -655,7 +769,7 @@
       </div>`, () => {
       bindBack(() => exit(ses));
       on("#listen", () => play(ayahUrl(s.id, a + 1)));
-      ses.questions++;
+      const rec = beginQ(ses, 7, `Ayat ${a + 1}`);
       let pos = 0;
       $$(".chip").forEach((el) => el.addEventListener("click", () => {
         if (el.classList.contains("used") || pos >= ayah.words.length) return;
@@ -671,7 +785,7 @@
             play(ayahUrl(s.id, a + 1));
           }
         } else {
-          ses.mistakes++;
+          wrongQ(ses, 7, rec);
           el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
         }
       }));
@@ -690,6 +804,7 @@
       const others = otherSurahs(s).flatMap((x) => x.ayahs.map((y) => y.tr));
       const wrong = distractors(correct, same, others, 2);
       return {
+        label: `Ayat ${a + 1}`,
         prompt: `<p class="q-label">Dengarkan, lalu pilih artinya</p>
           <p class="arabic">${esc(arText(s.ayahs[a]))}</p>`,
         audio: ayahUrl(s.id, a + 1),
@@ -700,7 +815,7 @@
     mcQuiz(ses, 8, "Pilih arti yang benar", qs, 0, () => go(ses, 8, () => result(ses)));
   }
 
-  // ---- 9. Hasil ----
+  // ---- 9. Laporan ----
   function result(ses) {
     const { s, mistakes, questions } = ses;
     // bintang berdasarkan rata-rata kesalahan per soal
@@ -715,9 +830,12 @@
     const msg = stars === 3 ? "Sempurna! Masya Allah!" : stars === 2 ? "Bagus sekali! Ulangi lagi untuk 3 bintang." : "Sudah selesai! Yuk ulangi biar makin lancar.";
 
     render(`<section class="screen result">
+      <small class="stage-tag">Tahap 9/9 · Laporan · ${esc(s.name)}</small>
       <h2>Pulau ${esc(s.place)} selesai!</h2>
       <div class="big-stars">${starHtml}</div>
-      <p>${msg}<br><small>${questions} soal · ${mistakes} kesalahan</small></p>
+      <p>${msg}<br><small>${questions} soal · ${mistakes}× salah</small></p>
+      <h3 class="report-title">📊 Laporan kuis</h3>
+      ${reportHtml(ses.stats, QUIZ_STAGES)}
       <div class="card reward">
         <small>${isNew ? "Harta laut baru!" : "Harta laut dari pulau ini"}</small>
         <div class="emo">${s.reward.emoji}</div>
