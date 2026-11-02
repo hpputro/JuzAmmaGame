@@ -5,14 +5,25 @@ Anak berlayar bersama Pipo si penyu 🐢 dari pulau ke pulau. Setiap pulau = sat
 dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq).
 
 ## Alur per surat
-1. **Kisah Pulau** – 3 slide pengantar makna surat.
-2. **Kenali Kata** – ketuk tiap kata Arab untuk melihat arti + mendengar audionya;
-   ayat berikutnya terbuka setelah semua kata dikenal.
-3. **Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
-4. **Susun Ayat** – susun potongan kata menjadi ayat yang utuh (uji hafalan urutan).
-5. **Hasil** – 1–3 bintang (berdasarkan jumlah kesalahan) + hadiah *Harta Laut* untuk koleksi.
+1. **Pengantar** – 3 slide kisah singkat tentang pesan surat.
+2. **Dengarkan Utuh** – surat diputar otomatis ayat demi ayat, menampilkan tulisan Arab,
+   transliterasi, dan arti. Bisa diatur: paket ayat (dari–sampai), berapa kali tiap ayat
+   diulang, dan berapa kali satu paket diulang. Ada tombol jeda/lanjutkan.
+3. **Kenali Kata** – ketuk tiap kata Arab untuk melihat arti, transliterasi, dan mendengar
+   audionya; ayat berikutnya terbuka setelah semua kata dikenal.
+4. **Harta Terpendam** – pesan/simpulan surat, nasihat untuk anak, dan "Tahukah Kamu?".
+5. **Kuis Lanjut Ayat** – dengar sebuah ayat (ada audio), pilih ayat sesudahnya.
+6. **Kuis Kata yang Hilang** – satu kata dikosongkan pada tulisan Arab dan transliterasi,
+   arti ayat ditampilkan; pilih kata yang tepat.
+7. **Kuis Susun Ayat** – susun potongan kata menjadi ayat yang utuh.
+8. **Kuis Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
+9. **Hasil** – 1–3 bintang + hadiah *Harta Laut* untuk koleksi.
 
-Pulau berikutnya terbuka setelah pulau sebelumnya selesai. Progres disimpan di browser (localStorage).
+Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2.
+Bintang dihitung dari rata-rata kesalahan per soal: ≤ 0,2 → 3 bintang, ≤ 0,6 → 2 bintang, selebihnya 1.
+
+Pulau berikutnya terbuka setelah pulau sebelumnya selesai. Progres dan pengaturan
+pengulangan disimpan di browser (localStorage).
 
 ## Isi saat ini
 An-Nas, Al-Falaq, Al-Ikhlas, Al-Kautsar, Al-'Asr. Tambah surat di `js/data.js`.

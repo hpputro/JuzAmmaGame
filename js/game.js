@@ -1,5 +1,8 @@
 /* Pelayaran Juz Amma — prototipe sederhana.
- * Alur per surat: Kisah → Kenali Kata → Pahami Arti → Susun Ayat → Hasil.
+ * Alur per surat:
+ *   1 Pengantar → 2 Dengarkan Utuh → 3 Kenali Kata → 4 Harta Terpendam →
+ *   5 Kuis Lanjut Ayat → 6 Kuis Kata yang Hilang → 7 Kuis Susun Ayat →
+ *   8 Kuis Pahami Arti → Hasil
  */
 (function () {
   "use strict";
@@ -8,15 +11,19 @@
   const toastEl = document.getElementById("toast");
   const MASCOT = "🐢"; // Pipo si penyu
   const SAVE_KEY = "pelayaran-juz-amma-v1";
+  const LISTEN_KEY = "pelayaran-juz-amma-listen-v1";
+  const STAGES = ["Pengantar", "Dengarkan Utuh", "Kenali Kata", "Harta Terpendam",
+    "Kuis Lanjut Ayat", "Kuis Kata yang Hilang", "Kuis Susun Ayat", "Kuis Pahami Arti"];
 
-  // ---------- penyimpanan progres (aman bila storage diblokir) ----------
-  function loadProgress() {
-    try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; }
+  // ---------- penyimpanan (aman bila storage diblokir) ----------
+  function load(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
   }
-  function saveProgress() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) { /* abaikan */ }
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* abaikan */ }
   }
-  let progress = loadProgress(); // { [surahId]: { stars: n } }
+  const progress = load(SAVE_KEY, {}); // { [surahId]: { stars: n } }
+  const listenPrefs = Object.assign({ ayahRepeat: 1, packRepeat: 1 }, load(LISTEN_KEY, {}));
 
   const starsOf = (s) => (progress[s.id] && progress[s.id].stars) || 0;
   const isUnlocked = (i) => i === 0 || starsOf(SURAHS[i - 1]) > 0;
@@ -32,7 +39,23 @@
     return a;
   };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const ayahText = (ayah) => ayah.words.map((w) => w[0]).join(" ");
+  const arText = (ayah) => ayah.words.map((w) => w[0]).join(" ");
+  const latin = (ayah) => ayah.words.map((w) => w[2]).join(" ");
+
+  /** Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2. */
+  const quizCount = (s) => Math.max(2, Math.ceil(s.ayahs.length / 2));
+  /** Ambil n indeks acak dari kandidat, lalu urutkan sesuai urutan ayat. */
+  const pickIdx = (candidates, n) => shuffle(candidates).slice(0, n).sort((x, y) => x - y);
+  /** Pengecoh unik: utamakan dari surat yang sama, bila kurang ambil dari surat lain. */
+  function distractors(correct, samePool, otherPool, k) {
+    const out = [];
+    for (const v of shuffle(samePool).concat(shuffle(otherPool))) {
+      if (out.length >= k) break;
+      if (v !== correct && !out.includes(v)) out.push(v);
+    }
+    return out;
+  }
+  const otherSurahs = (s) => SURAHS.filter((x) => x !== s);
 
   let toastTimer;
   function toast(msg) {
@@ -45,11 +68,37 @@
   // ---------- audio (butuh internet) ----------
   const audio = new Audio();
   let audioWarned = false;
+  let runId = 0; // naik setiap pindah layar, untuk menghentikan pemutaran berantai
+  function warnAudio() {
+    if (!audioWarned) { toast("🔇 Audio belum bisa diputar. Cek koneksi internet."); audioWarned = true; }
+  }
   function play(url) {
+    audio.onended = null;
     audio.pause();
     audio.src = url;
-    return audio.play().catch(() => {
-      if (!audioWarned) { toast("🔇 Audio belum bisa diputar. Cek koneksi internet."); audioWarned = true; }
+    return audio.play().catch((e) => { if (!e || e.name !== "AbortError") warnAudio(); });
+  }
+  /** Putar audio dan tunggu sampai selesai. Bila audio gagal, tunggu `fallbackMs`
+   *  (tidak dihitung selama dijeda) supaya urutan tetap berjalan tanpa suara. */
+  function playAndWait(url, fallbackMs, isPaused) {
+    const myRun = runId;
+    return new Promise((resolve) => {
+      let finished = false;
+      const finish = () => { if (finished) return; finished = true; audio.onended = null; resolve(); };
+      audio.pause();
+      audio.onended = finish;
+      audio.src = url;
+      audio.play().catch((e) => {
+        if (e && e.name === "AbortError") return; // dijeda sebelum mulai
+        warnAudio();
+        audio.onended = null;
+        let left = fallbackMs;
+        const t = setInterval(() => {
+          if (myRun !== runId) { clearInterval(t); return; }
+          if (!isPaused()) left -= 200;
+          if (left <= 0) { clearInterval(t); finish(); }
+        }, 200);
+      });
     });
   }
   const ayahUrl = (s, a) => `https://everyayah.com/data/Alafasy_128kbps/${pad3(s)}${pad3(a)}.mp3`;
@@ -57,6 +106,8 @@
 
   // ---------- render helper ----------
   function render(html, bind) {
+    runId++;
+    audio.onended = null;
     audio.pause();
     app.innerHTML = html;
     window.scrollTo(0, 0);
@@ -65,20 +116,26 @@
   const $ = (sel) => app.querySelector(sel);
   const $$ = (sel) => Array.from(app.querySelectorAll(sel));
   const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener("click", fn); };
+  const bindBack = (fn) => on("#back", fn);
 
-  function topbar(label, title, right, backFn) {
+  function topbar(label, title, right) {
     return `<div class="topbar">
       <button class="icon-btn" id="back" aria-label="Kembali">←</button>
       <div class="title"><small>${esc(label)}</small><b>${esc(title)}</b></div>
       ${right ? `<span class="pill">${esc(right)}</span>` : ""}
     </div>`;
   }
+  const stageLabel = (k, s) => `Tahap ${k}/${STAGES.length} · ${STAGES[k - 1]} · ${s.name}`;
   function progressBar(total, current) {
     let h = '<div class="progress">';
     for (let i = 0; i < total; i++) h += `<span class="${i < current ? "done" : i === current ? "now" : ""}"></span>`;
     return h + "</div>";
   }
-  function bindBack(fn) { on("#back", fn); }
+  /** Blok ayat lengkap: Arab + transliterasi + arti. */
+  const ayahBlock = (ayah) => `
+    <p class="arabic">${esc(arText(ayah))}</p>
+    <p class="latin">${esc(latin(ayah))}</p>
+    <p class="translation show">${esc(ayah.tr)}</p>`;
 
   // =====================================================================
   // BERANDA
@@ -129,17 +186,17 @@
   // ALUR SATU SURAT
   // =====================================================================
   function startSurah(s) {
-    const session = { s, mistakes: 0 };
-    story(session, 0);
+    const ses = { s, mistakes: 0, questions: 0 };
+    story(ses, 0);
   }
 
-  // ---- 1. Kisah ----
+  // ---- 1. Pengantar ----
   function story(ses, idx) {
     const { s } = ses;
     const slide = s.story[idx];
     let dots = "";
     s.story.forEach((_, i) => { dots += `<i class="${i === idx ? "on" : ""}"></i>`; });
-    render(`${topbar("Kisah Pulau", `${s.place} · ${s.name}`, null)}
+    render(`${topbar(stageLabel(1, s), s.place)}
       <div class="story-art" aria-hidden="true">${slide.art}</div>
       <div class="story-talk">
         <div class="mascot">${MASCOT}</div>
@@ -148,15 +205,135 @@
       <div class="spacer"></div>
       <div class="row">
         <button class="btn secondary" id="skip">Lewati</button>
-        <button class="btn" id="next">${idx < s.story.length - 1 ? "Lanjut" : "Mulai belajar!"}</button>
+        <button class="btn" id="next">${idx < s.story.length - 1 ? "Lanjut" : "Dengarkan suratnya ›"}</button>
       </div>`, () => {
       bindBack(map);
-      on("#skip", () => learnWords(ses, 0));
-      on("#next", () => idx < s.story.length - 1 ? story(ses, idx + 1) : learnWords(ses, 0));
+      on("#skip", () => listenSetup(ses));
+      on("#next", () => idx < s.story.length - 1 ? story(ses, idx + 1) : listenSetup(ses));
     });
   }
 
-  // ---- 2. Kenali Kata ----
+  // ---- 2. Dengarkan Utuh ----
+  function stepper(id, label, value, unit) {
+    return `<div class="stepper">
+      <span>${label}</span>
+      <div class="stepper-ctl">
+        <button class="icon-btn" data-step="${id}" data-d="-1" aria-label="Kurangi">−</button>
+        <b id="${id}">${value}</b>${unit ? `<small>${unit}</small>` : ""}
+        <button class="icon-btn" data-step="${id}" data-d="1" aria-label="Tambah">+</button>
+      </div>
+    </div>`;
+  }
+  function listenSetup(ses, prev) {
+    const { s } = ses;
+    const n = s.ayahs.length;
+    const cfg = prev || { from: 1, to: n, ayahRepeat: listenPrefs.ayahRepeat, packRepeat: listenPrefs.packRepeat };
+    const limits = { from: [1, n], to: [1, n], ayahRepeat: [1, 10], packRepeat: [1, 10] };
+
+    render(`${topbar(stageLabel(2, s), "Atur cara mendengarkan")}
+      <div class="story-talk"><div class="mascot">${MASCOT}</div>
+        <div class="bubble">Dengarkan surat ${esc(s.name)} ayat demi ayat. Kamu cukup menyimak, nanti diputar otomatis!</div></div>
+      <div class="card settings">
+        <h3>📦 Paket ayat</h3>
+        ${stepper("from", "Dari ayat", cfg.from)}
+        ${stepper("to", "Sampai ayat", cfg.to)}
+        <h3>🔁 Pengulangan</h3>
+        ${stepper("ayahRepeat", "Ulang tiap ayat", cfg.ayahRepeat, "kali")}
+        ${stepper("packRepeat", "Ulang satu paket", cfg.packRepeat, "kali")}
+        <p class="translation" id="summary"></p>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" id="play">▶ Mulai dengarkan</button>
+      <button class="btn secondary" id="skip">Lewati ke Kenali Kata ›</button>`, () => {
+      bindBack(map);
+      const summary = () => {
+        const count = (cfg.to - cfg.from + 1) * cfg.ayahRepeat * cfg.packRepeat;
+        $("#summary").textContent = `Total ${count} kali putar ayat.`;
+      };
+      summary();
+      $$("[data-step]").forEach((b) => b.addEventListener("click", () => {
+        const key = b.dataset.step;
+        const [min, max] = limits[key];
+        cfg[key] = Math.min(max, Math.max(min, cfg[key] + Number(b.dataset.d)));
+        // jaga agar "dari" ≤ "sampai"
+        if (key === "from" && cfg.from > cfg.to) cfg.to = cfg.from;
+        if (key === "to" && cfg.to < cfg.from) cfg.from = cfg.to;
+        ["from", "to", "ayahRepeat", "packRepeat"].forEach((k) => { $("#" + k).textContent = cfg[k]; });
+        summary();
+      }));
+      on("#play", () => {
+        listenPrefs.ayahRepeat = cfg.ayahRepeat;
+        listenPrefs.packRepeat = cfg.packRepeat;
+        save(LISTEN_KEY, listenPrefs);
+        listenPlay(ses, cfg);
+      });
+      on("#skip", () => learnWords(ses, 0));
+    });
+  }
+  function listenPlay(ses, cfg) {
+    const { s } = ses;
+    const queue = [];
+    for (let p = 1; p <= cfg.packRepeat; p++)
+      for (let a = cfg.from; a <= cfg.to; a++)
+        for (let r = 1; r <= cfg.ayahRepeat; r++) queue.push({ p, a, r });
+
+    render(`${topbar(stageLabel(2, s), `Ayat ${cfg.from}–${cfg.to}`)}
+      ${progressBar(queue.length, 0)}
+      <div class="card listen" id="ayah"></div>
+      <p class="status" id="status"></p>
+      <div class="spacer"></div>
+      <div class="row">
+        <button class="btn secondary" id="pause">⏸ Jeda</button>
+        <button class="btn secondary" id="setup">⚙️ Atur</button>
+      </div>
+      <button class="btn" id="next">Lanjut ke Kenali Kata ›</button>`, () => {
+      bindBack(map);
+      const myRun = runId;
+      let idx = 0, paused = false, waiting = false, done = false;
+      const bars = $$(".progress span");
+
+      function show(item) {
+        $("#ayah").innerHTML = `<small class="pill">Ayat ${item.a}</small>${ayahBlock(s.ayahs[item.a - 1])}`;
+        let st = `Ulangan ayat ${item.r}/${cfg.ayahRepeat}`;
+        if (cfg.packRepeat > 1) st += ` · Putaran paket ${item.p}/${cfg.packRepeat}`;
+        $("#status").textContent = st;
+        bars.forEach((b, i) => { b.className = i < idx ? "done" : i === idx ? "now" : ""; });
+      }
+      function step() {
+        if (myRun !== runId) return;
+        if (paused) { waiting = true; return; }
+        if (idx >= queue.length) {
+          done = true;
+          bars.forEach((b) => { b.className = "done"; });
+          $("#status").textContent = "Selesai mendengarkan! Masya Allah 🎉";
+          $("#pause").textContent = "↻ Putar lagi";
+          return;
+        }
+        const item = queue[idx];
+        const ayah = s.ayahs[item.a - 1];
+        show(item);
+        playAndWait(ayahUrl(s.id, item.a), 1500 + ayah.words.length * 700, () => paused).then(() => {
+          if (myRun !== runId) return;
+          idx++;
+          setTimeout(step, 700);
+        });
+      }
+      on("#pause", () => {
+        const btn = $("#pause");
+        if (done) { done = false; idx = 0; btn.textContent = "⏸ Jeda"; step(); return; }
+        paused = !paused;
+        btn.textContent = paused ? "▶ Lanjutkan" : "⏸ Jeda";
+        if (paused) audio.pause();
+        else if (waiting) { waiting = false; step(); }
+        else if (audio.src && !audio.ended) audio.play().catch(() => {});
+      });
+      on("#setup", () => listenSetup(ses, cfg));
+      on("#next", () => learnWords(ses, 0));
+      step();
+    });
+  }
+
+  // ---- 3. Kenali Kata ----
   function learnWords(ses, a) {
     const { s } = ses;
     const ayah = s.ayahs[a];
@@ -164,7 +341,7 @@
     let words = "";
     ayah.words.forEach((w, i) => { words += `<button class="word" data-w="${i}">${esc(w[0])}</button>`; });
 
-    render(`${topbar(`Kenali Kata · ${s.name}`, "Ketuk tiap kata", `Ayat ${a + 1}/${s.ayahs.length}`)}
+    render(`${topbar(stageLabel(3, s), "Ketuk tiap kata", `Ayat ${a + 1}/${s.ayahs.length}`)}
       ${progressBar(s.ayahs.length, a)}
       <div class="card">
         <div class="words">${words}</div>
@@ -176,7 +353,7 @@
       <div class="spacer"></div>
       <div class="row">
         <button class="btn secondary" id="listen">▶ Dengar ayat</button>
-        <button class="btn" id="next" disabled>${a < s.ayahs.length - 1 ? "Ayat berikutnya ›" : "Uji pemahaman ›"}</button>
+        <button class="btn" id="next" disabled>${a < s.ayahs.length - 1 ? "Ayat berikutnya ›" : "Buka Harta Terpendam ›"}</button>
       </div>`, () => {
       bindBack(map);
       on("#listen", () => play(ayahUrl(s.id, a + 1)));
@@ -185,69 +362,156 @@
         $$(".word").forEach((x) => x.classList.remove("active"));
         el.classList.add("active", "seen");
         seen.add(i);
-        $("#meaning").innerHTML = `<span class="tag">${esc(ayah.words[i][1])}</span>`;
+        $("#meaning").innerHTML = `<div><span class="tag">${esc(ayah.words[i][1])}</span><p class="latin">${esc(ayah.words[i][2])}</p></div>`;
         $("#count").textContent = `Kata yang sudah dikenal: ${seen.size}/${ayah.words.length}`;
         play(wordUrl(s.id, a + 1, i + 1));
         if (seen.size === ayah.words.length) {
           $("#next").disabled = false;
           const tr = $("#tr");
-          tr.textContent = ayah.tr;
+          tr.innerHTML = `<span class="latin">${esc(latin(ayah))}</span><br>${esc(ayah.tr)}`;
           tr.classList.add("show");
           $("#count").textContent = "Hebat! Semua kata sudah kamu kenal 🎉";
         }
       }));
-      on("#next", () => a < s.ayahs.length - 1 ? learnWords(ses, a + 1) : startQuiz(ses));
+      on("#next", () => a < s.ayahs.length - 1 ? learnWords(ses, a + 1) : treasure(ses));
     });
   }
 
-  // ---- 3. Pahami Arti (dengar ayat → pilih arti) ----
-  function startQuiz(ses) {
-    const picks = shuffle(ses.s.ayahs.map((_, i) => i)).slice(0, 3).sort((x, y) => x - y);
-    quiz(ses, picks, 0);
-  }
-  function quiz(ses, picks, q) {
+  // ---- 4. Harta Terpendam / Tahukah Kamu ----
+  function treasure(ses) {
     const { s } = ses;
-    const a = picks[q];
-    const others = shuffle(s.ayahs.map((_, i) => i).filter((i) => i !== a)).slice(0, 2);
-    const opts = shuffle([a, ...others]);
-    let html = "";
-    opts.forEach((i) => { html += `<button class="option" data-i="${i}">${esc(s.ayahs[i].tr)}</button>`; });
+    const t = s.treasure;
+    let advice = "";
+    t.advice.forEach((x) => { advice += `<li>${esc(x)}</li>`; });
+    render(`${topbar(stageLabel(4, s), "Harta Terpendam")}
+      <div class="chest" aria-hidden="true">💎</div>
+      <div class="card treasure">
+        <h3>📜 Pesan surat ${esc(s.name)}</h3>
+        <p>${esc(t.message)}</p>
+      </div>
+      <div class="card treasure">
+        <h3>💡 Nasihat untukmu</h3>
+        <ul>${advice}</ul>
+      </div>
+      <div class="card treasure fact">
+        <h3>🤔 Tahukah Kamu?</h3>
+        <p>${esc(t.fact)}</p>
+      </div>
+      <div class="story-talk"><div class="mascot">${MASCOT}</div>
+        <div class="bubble">Sudah siap? Saatnya kuis! Ada 4 kuis menunggumu.</div></div>
+      <button class="btn coral" id="next">Mulai kuis ›</button>`, () => {
+      bindBack(map);
+      on("#next", () => quizNextAyah(ses));
+    });
+  }
 
-    render(`${topbar(`Pahami Arti · ${s.name}`, "Dengar, lalu pilih artinya", `${q + 1}/${picks.length}`)}
-      ${progressBar(picks.length, q)}
-      <div class="card" style="text-align:center">
-        <button class="btn secondary" id="listen">▶ Dengar ayatnya</button>
-        <p class="arabic" style="margin-top:8px">${esc(ayahText(s.ayahs[a]))}</p>
+  // ---- Mesin kuis pilihan ganda (dipakai tahap 5, 6, 8) ----
+  // q = { prompt, audio, autoplay, options: [{ html, correct }], arabicOptions, onCorrect }
+  function mcQuiz(ses, stage, title, questions, qi, next) {
+    const { s } = ses;
+    const q = questions[qi];
+    const opts = shuffle(q.options);
+    let html = "";
+    opts.forEach((o, i) => { html += `<button class="option ${q.arabicOptions ? "ar" : ""}" data-i="${i}">${o.html}</button>`; });
+
+    render(`${topbar(stageLabel(stage, s), title, `${qi + 1}/${questions.length}`)}
+      ${progressBar(questions.length, qi)}
+      <div class="card question">
+        ${q.prompt}
+        ${q.audio ? '<button class="btn secondary small" id="listen">▶ Dengar ayatnya</button>' : ""}
       </div>
       <div class="options">${html}</div>
       <div class="spacer"></div>
       <button class="btn" id="next" disabled>Lanjut ›</button>`, () => {
       bindBack(map);
-      on("#listen", () => play(ayahUrl(s.id, a + 1)));
-      play(ayahUrl(s.id, a + 1));
+      if (q.audio) {
+        on("#listen", () => play(q.audio));
+        if (q.autoplay) play(q.audio);
+      }
       let solved = false;
+      ses.questions++;
       $$(".option").forEach((el) => el.addEventListener("click", () => {
         if (solved) return;
-        if (Number(el.dataset.i) === a) {
+        if (opts[Number(el.dataset.i)].correct) {
           solved = true;
           el.classList.add("right");
           $("#next").disabled = false;
           toast("✅ Benar! Masya Allah!");
+          if (q.onCorrect) q.onCorrect();
         } else {
           ses.mistakes++;
           el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
-          toast("Hampir! Coba dengarkan lagi 🙂");
+          toast("Hampir! Coba lagi 🙂");
         }
       }));
-      on("#next", () => q < picks.length - 1 ? quiz(ses, picks, q + 1) : startArrange(ses));
+      on("#next", () => qi < questions.length - 1 ? mcQuiz(ses, stage, title, questions, qi + 1, next) : next());
     });
   }
 
-  // ---- 4. Susun Ayat (uji hafalan urutan kata) ----
+  // ---- 5. Kuis Lanjut Ayat ----
+  function quizNextAyah(ses) {
+    const { s } = ses;
+    const cands = s.ayahs.map((_, i) => i).slice(0, -1); // ayat terakhir tidak punya lanjutan
+    const picks = pickIdx(cands, quizCount(s));
+    const qs = picks.map((a) => {
+      const correct = arText(s.ayahs[a + 1]);
+      const same = s.ayahs.filter((_, i) => i !== a && i !== a + 1).map(arText);
+      const others = otherSurahs(s).flatMap((x) => x.ayahs.map(arText));
+      const wrong = distractors(correct, same, others, 2);
+      return {
+        prompt: `<p class="q-label">Dengarkan ayat ${a + 1}. Ayat berikutnya adalah…</p>
+          <p class="arabic">${esc(arText(s.ayahs[a]))}</p>
+          <p class="latin">${esc(latin(s.ayahs[a]))}</p>`,
+        audio: ayahUrl(s.id, a + 1),
+        autoplay: true,
+        arabicOptions: true,
+        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false }))),
+        onCorrect: () => play(ayahUrl(s.id, a + 2))
+      };
+    });
+    mcQuiz(ses, 5, "Pilih ayat berikutnya", qs, 0, () => quizMissingWord(ses));
+  }
+
+  // ---- 6. Kuis Kata yang Hilang ----
+  function quizMissingWord(ses) {
+    const { s } = ses;
+    const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
+    const picks = pickIdx(cands, quizCount(s));
+    const qs = picks.map((a) => {
+      const ayah = s.ayahs[a];
+      const blank = Math.floor(Math.random() * ayah.words.length);
+      const correct = ayah.words[blank][0];
+      // jangan pakai kata yang masih terlihat di ayat ini sebagai pengecoh
+      const visible = ayah.words.map((w) => w[0]);
+      const same = s.ayahs.flatMap((x) => x.words.map((w) => w[0])).filter((w) => !visible.includes(w));
+      const others = otherSurahs(s).flatMap((x) => x.ayahs.flatMap((y) => y.words.map((w) => w[0])));
+      const wrong = distractors(correct, same, others.filter((w) => !visible.includes(w)), 2);
+      const ar = ayah.words.map((w, i) => i === blank ? '<span class="blank">؟</span>' : esc(w[0])).join(" ");
+      const lt = ayah.words.map((w, i) => i === blank ? '<span class="blank">___</span>' : esc(w[2])).join(" ");
+      return {
+        prompt: `<p class="q-label">Ayat ${a + 1}: kata apa yang hilang?</p>
+          <p class="arabic" id="q-ar">${ar}</p>
+          <p class="latin" id="q-lt">${lt}</p>
+          <p class="translation show">${esc(ayah.tr)}</p>`,
+        audio: ayahUrl(s.id, a + 1),
+        autoplay: false,
+        arabicOptions: true,
+        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false }))),
+        onCorrect: () => {
+          $("#q-ar").textContent = arText(ayah);
+          $("#q-lt").textContent = latin(ayah);
+          play(wordUrl(s.id, a + 1, blank + 1));
+        }
+      };
+    });
+    mcQuiz(ses, 6, "Lengkapi ayatnya", qs, 0, () => startArrange(ses));
+  }
+
+  // ---- 7. Kuis Susun Ayat ----
   function startArrange(ses) {
-    const candidates = ses.s.ayahs.map((ay, i) => i).filter((i) => ses.s.ayahs[i].words.length >= 2);
-    const picks = shuffle(candidates).slice(0, 3).sort((x, y) => x - y);
-    arrange(ses, picks, 0);
+    const { s } = ses;
+    const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
+    arrange(ses, pickIdx(cands, quizCount(s)), 0);
   }
   function arrange(ses, picks, q) {
     const { s } = ses;
@@ -259,7 +523,7 @@
     let bank = "";
     order.forEach((i) => { bank += `<button class="chip" data-w="${i}">${esc(ayah.words[i][0])}</button>`; });
 
-    render(`${topbar(`Susun Ayat · ${s.name}`, `Susun ayat ${a + 1} dengan urutan benar`, `${q + 1}/${picks.length}`)}
+    render(`${topbar(stageLabel(7, s), `Susun ayat ${a + 1}`, `${q + 1}/${picks.length}`)}
       ${progressBar(picks.length, q)}
       <p class="translation show">Artinya: ${esc(ayah.tr)}</p>
       <div class="slots" id="slots"></div>
@@ -272,9 +536,10 @@
       </div>`, () => {
       bindBack(map);
       on("#listen", () => play(ayahUrl(s.id, a + 1)));
+      ses.questions++;
       let pos = 0;
       $$(".chip").forEach((el) => el.addEventListener("click", () => {
-        if (el.classList.contains("used")) return;
+        if (el.classList.contains("used") || pos >= ayah.words.length) return;
         const i = Number(el.dataset.w);
         // bandingkan teks, karena satu ayat bisa memuat kata yang sama dua kali
         if (ayah.words[i][0] === ayah.words[pos][0]) {
@@ -291,17 +556,39 @@
           el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
         }
       }));
-      on("#next", () => q < picks.length - 1 ? arrange(ses, picks, q + 1) : result(ses));
+      on("#next", () => q < picks.length - 1 ? arrange(ses, picks, q + 1) : quizMeaning(ses));
     });
   }
 
-  // ---- 5. Hasil ----
+  // ---- 8. Kuis Pahami Arti ----
+  function quizMeaning(ses) {
+    const { s } = ses;
+    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(s));
+    const qs = picks.map((a) => {
+      const correct = s.ayahs[a].tr;
+      const same = s.ayahs.map((x) => x.tr);
+      const others = otherSurahs(s).flatMap((x) => x.ayahs.map((y) => y.tr));
+      const wrong = distractors(correct, same, others, 2);
+      return {
+        prompt: `<p class="q-label">Dengarkan, lalu pilih artinya</p>
+          <p class="arabic">${esc(arText(s.ayahs[a]))}</p>`,
+        audio: ayahUrl(s.id, a + 1),
+        autoplay: true,
+        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false })))
+      };
+    });
+    mcQuiz(ses, 8, "Pilih arti yang benar", qs, 0, () => result(ses));
+  }
+
+  // ---- 9. Hasil ----
   function result(ses) {
-    const { s, mistakes } = ses;
-    const stars = mistakes <= 1 ? 3 : mistakes <= 4 ? 2 : 1;
+    const { s, mistakes, questions } = ses;
+    // bintang berdasarkan rata-rata kesalahan per soal
+    const ratio = mistakes / Math.max(1, questions);
+    const stars = ratio <= 0.2 ? 3 : ratio <= 0.6 ? 2 : 1;
     const isNew = starsOf(s) === 0;
     progress[s.id] = { stars: Math.max(stars, starsOf(s)) };
-    saveProgress();
+    save(SAVE_KEY, progress);
 
     let starHtml = "";
     for (let i = 0; i < 3; i++) starHtml += `<span class="${i < stars ? "" : "off"}">⭐</span>`;
@@ -310,7 +597,7 @@
     render(`<section class="screen result">
       <h2>Pulau ${esc(s.place)} selesai!</h2>
       <div class="big-stars">${starHtml}</div>
-      <p>${msg}<br><small>Kesalahan: ${mistakes}</small></p>
+      <p>${msg}<br><small>${questions} soal · ${mistakes} kesalahan</small></p>
       <div class="card reward">
         <small>${isNew ? "Harta laut baru!" : "Harta laut dari pulau ini"}</small>
         <div class="emo">${s.reward.emoji}</div>
