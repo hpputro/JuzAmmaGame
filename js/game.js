@@ -44,17 +44,15 @@
 
   /** Jumlah soal kuis, tergantung mode.
    *  Mulai Berlayar   : semua kuis = separuh jumlah ayat, min 2, maks 10.
-   *  Pelayaran Mandiri: Lanjut Ayat = separuh jumlah ayat (min 2);
-   *                     Kata yang Hilang & Susun Ayat = jumlah ayat;
-   *                     Pahami Arti = sama seperti Mulai Berlayar.
+   *  Pelayaran Mandiri: Lanjut Ayat & Pahami Arti = separuh jumlah ayat (min 2, tanpa maks);
+   *                     Kata yang Hilang & Susun Ayat = jumlah ayat.
    *  Jumlah sebenarnya dibatasi oleh banyaknya ayat yang bisa dijadikan soal. */
   function quizCount(ses, kind) {
     const n = ses.s.ayahs.length;
     const half = Math.max(2, Math.ceil(n / 2));
     if (!ses.free) return Math.min(10, half);
-    if (kind === "next") return half;
     if (kind === "missing" || kind === "arrange") return n;
-    return Math.min(10, half);
+    return half; // Lanjut Ayat & Pahami Arti
   }
   /** Ambil n indeks acak dari kandidat, lalu urutkan sesuai urutan ayat. */
   const pickIdx = (candidates, n) => shuffle(candidates).slice(0, n).sort((x, y) => x - y);

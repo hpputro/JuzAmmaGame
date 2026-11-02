@@ -34,7 +34,7 @@ Jumlah soal kuis (separuh = dibulatkan ke atas):
 | Lanjut Ayat | separuh jumlah ayat, min 2, maks 10 | separuh jumlah ayat, min 2 |
 | Kata yang Hilang | separuh jumlah ayat, min 2, maks 10 | jumlah ayat |
 | Susun Ayat | separuh jumlah ayat, min 2, maks 10 | jumlah ayat |
-| Pahami Arti | separuh jumlah ayat, min 2, maks 10 | separuh jumlah ayat, min 2, maks 10 |
+| Pahami Arti | separuh jumlah ayat, min 2, maks 10 | separuh jumlah ayat, min 2 |
 
 Ayat yang tidak bisa dijadikan soal (mis. ayat satu kata untuk Susun Ayat) dilewati,
 sehingga jumlah soal bisa sedikit lebih kecil.
