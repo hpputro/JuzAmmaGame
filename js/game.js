@@ -530,7 +530,11 @@
   // ---- 5. Kuis Lanjut Ayat ----
   function quizNextAyah(ses) {
     const { s } = ses;
-    const cands = s.ayahs.map((_, i) => i).slice(0, -1); // ayat terakhir tidak punya lanjutan
+    // ayat terakhir tidak punya lanjutan; ayat kembar (teks sama di tempat lain,
+    // mis. Al-Muthaffifin 9 & 20) dilewati karena lanjutannya jadi ambigu
+    const texts = s.ayahs.map(arText);
+    const cands = s.ayahs.map((_, i) => i).slice(0, -1)
+      .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
     const picks = pickIdx(cands, quizCount(s));
     const qs = picks.map((a) => {
       const correct = arText(s.ayahs[a + 1]);
@@ -645,7 +649,8 @@
     const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(s));
     const qs = picks.map((a) => {
       const correct = s.ayahs[a].tr;
-      const same = s.ayahs.map((x) => x.tr);
+      // jangan jadikan arti ayat kembar sebagai pengecoh (artinya sama)
+      const same = s.ayahs.filter((x) => arText(x) !== arText(s.ayahs[a])).map((x) => x.tr);
       const others = otherSurahs(s).flatMap((x) => x.ayahs.map((y) => y.tr));
       const wrong = distractors(correct, same, others, 2);
       return {
