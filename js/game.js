@@ -146,10 +146,12 @@
       <h1>Pelayaran<br>Juz Amma</h1>
       <p>Berlayar bersama Pipo si penyu ${MASCOT} dari pulau ke pulau. Tiap pulau menyimpan satu surat!</p>
       <div class="spacer"></div>
-      <button class="btn" id="start">Mulai Berlayar</button>
-      <button class="btn secondary" id="coll">🧺 Koleksi Harta Laut</button>
+      <button class="btn menu" id="start">⛵ Mulai Berlayar<small>Jelajahi pulau satu per satu</small></button>
+      <button class="btn coral menu" id="free">🧭 Pelayaran Mandiri<small>Semua surat &amp; aktivitas terbuka</small></button>
+      <button class="btn secondary menu" id="coll">🧺 Harta Laut<small>Koleksi oleh-oleh dari tiap pulau</small></button>
     </section>`, () => {
       on("#start", map);
+      on("#free", freeMap);
       on("#coll", collection);
     });
   }
@@ -183,6 +185,83 @@
   }
 
   // =====================================================================
+  // PELAYARAN MANDIRI (semua surat & aktivitas terbuka, tanpa prasyarat)
+  // =====================================================================
+  const ACTIVITIES = [
+    { emoji: "📖", desc: "Kisah singkat pesan surat", start: (ses) => story(ses, 0) },
+    { emoji: "🎧", desc: "Dengarkan ayat demi ayat, bisa diulang", start: (ses) => listenSetup(ses) },
+    { emoji: "👆", desc: "Ketuk kata, lihat arti & dengar suaranya", start: (ses) => learnWords(ses, 0) },
+    { emoji: "💎", desc: "Pesan, nasihat, dan Tahukah Kamu?", start: (ses) => treasure(ses) },
+    { emoji: "➡️", desc: "Dengar ayat, pilih ayat berikutnya", start: (ses) => quizNextAyah(ses) },
+    { emoji: "🧩", desc: "Lengkapi kata yang dikosongkan", start: (ses) => quizMissingWord(ses) },
+    { emoji: "🔤", desc: "Susun kata menjadi ayat utuh", start: (ses) => startArrange(ses) },
+    { emoji: "💬", desc: "Dengar ayat, pilih artinya", start: (ses) => quizMeaning(ses) }
+  ];
+
+  function freeMap() {
+    let list = "";
+    SURAHS.forEach((s, i) => {
+      list += `<button class="island free" data-i="${i}">
+        <span class="emo">${s.emoji}</span>
+        <span><b>${esc(s.name)}</b><small>${esc(s.meaning)} · ${s.ayahs.length} ayat</small></span>
+      </button>`;
+    });
+    render(`${topbar("Pelayaran Mandiri", "Pilih surat")}
+      <p>Semua surat terbuka. Pilih surat, lalu pilih aktivitas yang ingin kamu lakukan.</p>
+      <div class="free-list">${list}</div>`, () => {
+      bindBack(home);
+      $$(".island").forEach((el) => el.addEventListener("click", () => activityMenu(SURAHS[Number(el.dataset.i)])));
+    });
+  }
+
+  function activityMenu(s) {
+    let list = "";
+    ACTIVITIES.forEach((a, i) => {
+      list += `<button class="activity" data-i="${i}">
+        <span class="emo">${a.emoji}</span>
+        <span><b>${i + 1}. ${esc(STAGES[i])}</b><small>${esc(a.desc)}</small></span>
+      </button>`;
+    });
+    render(`${topbar("Pelayaran Mandiri", `Surat ${s.name}`)}
+      <p>Pilih aktivitas. Tidak harus berurutan!</p>
+      <div class="free-list">${list}</div>`, () => {
+      bindBack(freeMap);
+      $$(".activity").forEach((el) => el.addEventListener("click", () => {
+        const stage = Number(el.dataset.i) + 1;
+        ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true });
+      }));
+    });
+  }
+
+  /** Pindah ke tahap berikutnya (mode berlayar) atau selesaikan aktivitas (mode mandiri). */
+  function go(ses, finishedStage, nextFn) {
+    if (!ses.free) { nextFn(); return; }
+    if (finishedStage >= 5) { freeQuizDone(ses, finishedStage); return; }
+    activityMenu(ses.s);
+    toast(`✅ ${STAGES[finishedStage - 1]} selesai!`);
+  }
+  /** Label tombol penutup aktivitas: di mode mandiri menjadi "Selesai". */
+  const endLabel = (ses, text, freeText) => ses.free ? (freeText || "Selesai ✓") : text;
+  /** Tombol kembali: ke peta (mode berlayar) atau ke menu aktivitas (mode mandiri). */
+  function exit(ses) { return ses.free ? activityMenu(ses.s) : map(); }
+
+  function freeQuizDone(ses, stage) {
+    const { s, mistakes, questions } = ses;
+    render(`<section class="screen result">
+      <h2>${esc(STAGES[stage - 1])} selesai!</h2>
+      <div class="big-stars">${mistakes === 0 ? "🏆" : "👍"}</div>
+      <p>${mistakes === 0 ? "Tanpa kesalahan! Masya Allah!" : "Bagus! Terus berlatih ya."}<br>
+        <small>Surat ${esc(s.name)} · ${questions} soal · ${mistakes} kesalahan</small></p>
+      <div class="spacer"></div>
+      <button class="btn" id="again">↻ Ulangi kuis ini</button>
+      <button class="btn secondary" id="menu">Pilih aktivitas lain</button>
+    </section>`, () => {
+      on("#again", () => ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true }));
+      on("#menu", () => activityMenu(s));
+    });
+  }
+
+  // =====================================================================
   // ALUR SATU SURAT
   // =====================================================================
   function startSurah(s) {
@@ -205,11 +284,11 @@
       <div class="spacer"></div>
       <div class="row">
         <button class="btn secondary" id="skip">Lewati</button>
-        <button class="btn" id="next">${idx < s.story.length - 1 ? "Lanjut" : "Dengarkan suratnya ›"}</button>
+        <button class="btn" id="next">${idx < s.story.length - 1 ? "Lanjut" : endLabel(ses, "Dengarkan suratnya ›")}</button>
       </div>`, () => {
-      bindBack(map);
-      on("#skip", () => listenSetup(ses));
-      on("#next", () => idx < s.story.length - 1 ? story(ses, idx + 1) : listenSetup(ses));
+      bindBack(() => exit(ses));
+      on("#skip", () => go(ses, 1, () => listenSetup(ses)));
+      on("#next", () => idx < s.story.length - 1 ? story(ses, idx + 1) : go(ses, 1, () => listenSetup(ses)));
     });
   }
 
@@ -244,8 +323,8 @@
       </div>
       <div class="spacer"></div>
       <button class="btn" id="play">▶ Mulai dengarkan</button>
-      <button class="btn secondary" id="skip">Lewati ke Kenali Kata ›</button>`, () => {
-      bindBack(map);
+      <button class="btn secondary" id="skip">${endLabel(ses, "Lewati ke Kenali Kata ›", "Kembali ke menu")}</button>`, () => {
+      bindBack(() => exit(ses));
       const summary = () => {
         const count = (cfg.to - cfg.from + 1) * cfg.ayahRepeat * cfg.packRepeat;
         $("#summary").textContent = `Total ${count} kali putar ayat.`;
@@ -267,7 +346,7 @@
         save(LISTEN_KEY, listenPrefs);
         listenPlay(ses, cfg);
       });
-      on("#skip", () => learnWords(ses, 0));
+      on("#skip", () => go(ses, 2, () => learnWords(ses, 0)));
     });
   }
   function listenPlay(ses, cfg) {
@@ -286,8 +365,8 @@
         <button class="btn secondary" id="pause">⏸ Jeda</button>
         <button class="btn secondary" id="setup">⚙️ Atur</button>
       </div>
-      <button class="btn" id="next">Lanjut ke Kenali Kata ›</button>`, () => {
-      bindBack(map);
+      <button class="btn" id="next">${endLabel(ses, "Lanjut ke Kenali Kata ›")}</button>`, () => {
+      bindBack(() => exit(ses));
       const myRun = runId;
       let idx = 0, paused = false, waiting = false, done = false;
       const bars = $$(".progress span");
@@ -328,7 +407,7 @@
         else if (audio.src && !audio.ended) audio.play().catch(() => {});
       });
       on("#setup", () => listenSetup(ses, cfg));
-      on("#next", () => learnWords(ses, 0));
+      on("#next", () => go(ses, 2, () => learnWords(ses, 0)));
       step();
     });
   }
@@ -353,9 +432,9 @@
       <div class="spacer"></div>
       <div class="row">
         <button class="btn secondary" id="listen">▶ Dengar ayat</button>
-        <button class="btn" id="next" disabled>${a < s.ayahs.length - 1 ? "Ayat berikutnya ›" : "Buka Harta Terpendam ›"}</button>
+        <button class="btn" id="next" disabled>${a < s.ayahs.length - 1 ? "Ayat berikutnya ›" : endLabel(ses, "Buka Harta Terpendam ›")}</button>
       </div>`, () => {
-      bindBack(map);
+      bindBack(() => exit(ses));
       on("#listen", () => play(ayahUrl(s.id, a + 1)));
       $$(".word").forEach((el) => el.addEventListener("click", () => {
         const i = Number(el.dataset.w);
@@ -373,7 +452,7 @@
           $("#count").textContent = "Hebat! Semua kata sudah kamu kenal 🎉";
         }
       }));
-      on("#next", () => a < s.ayahs.length - 1 ? learnWords(ses, a + 1) : treasure(ses));
+      on("#next", () => a < s.ayahs.length - 1 ? learnWords(ses, a + 1) : go(ses, 3, () => treasure(ses)));
     });
   }
 
@@ -398,10 +477,10 @@
         <p>${esc(t.fact)}</p>
       </div>
       <div class="story-talk"><div class="mascot">${MASCOT}</div>
-        <div class="bubble">Sudah siap? Saatnya kuis! Ada 4 kuis menunggumu.</div></div>
-      <button class="btn coral" id="next">Mulai kuis ›</button>`, () => {
-      bindBack(map);
-      on("#next", () => quizNextAyah(ses));
+        <div class="bubble">${ses.free ? "Semoga bermanfaat! Simpan harta ini di hatimu ya." : "Sudah siap? Saatnya kuis! Ada 4 kuis menunggumu."}</div></div>
+      <button class="btn coral" id="next">${ses.free ? "Selesai ✓" : "Mulai kuis ›"}</button>`, () => {
+      bindBack(() => exit(ses));
+      on("#next", () => go(ses, 4, () => quizNextAyah(ses)));
     });
   }
 
@@ -423,7 +502,7 @@
       <div class="options">${html}</div>
       <div class="spacer"></div>
       <button class="btn" id="next" disabled>Lanjut ›</button>`, () => {
-      bindBack(map);
+      bindBack(() => exit(ses));
       if (q.audio) {
         on("#listen", () => play(q.audio));
         if (q.autoplay) play(q.audio);
@@ -469,7 +548,7 @@
         onCorrect: () => play(ayahUrl(s.id, a + 2))
       };
     });
-    mcQuiz(ses, 5, "Pilih ayat berikutnya", qs, 0, () => quizMissingWord(ses));
+    mcQuiz(ses, 5, "Pilih ayat berikutnya", qs, 0, () => go(ses, 5, () => quizMissingWord(ses)));
   }
 
   // ---- 6. Kuis Kata yang Hilang ----
@@ -504,7 +583,7 @@
         }
       };
     });
-    mcQuiz(ses, 6, "Lengkapi ayatnya", qs, 0, () => startArrange(ses));
+    mcQuiz(ses, 6, "Lengkapi ayatnya", qs, 0, () => go(ses, 6, () => startArrange(ses)));
   }
 
   // ---- 7. Kuis Susun Ayat ----
@@ -534,7 +613,7 @@
         <button class="btn secondary" id="listen">▶ Contoh bacaan</button>
         <button class="btn" id="next" disabled>Lanjut ›</button>
       </div>`, () => {
-      bindBack(map);
+      bindBack(() => exit(ses));
       on("#listen", () => play(ayahUrl(s.id, a + 1)));
       ses.questions++;
       let pos = 0;
@@ -556,7 +635,7 @@
           el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
         }
       }));
-      on("#next", () => q < picks.length - 1 ? arrange(ses, picks, q + 1) : quizMeaning(ses));
+      on("#next", () => q < picks.length - 1 ? arrange(ses, picks, q + 1) : go(ses, 7, () => quizMeaning(ses)));
     });
   }
 
@@ -577,7 +656,7 @@
         options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false })))
       };
     });
-    mcQuiz(ses, 8, "Pilih arti yang benar", qs, 0, () => result(ses));
+    mcQuiz(ses, 8, "Pilih arti yang benar", qs, 0, () => go(ses, 8, () => result(ses)));
   }
 
   // ---- 9. Hasil ----

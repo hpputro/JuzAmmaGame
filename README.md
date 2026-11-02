@@ -4,6 +4,14 @@ Prototipe game web untuk anak: **hafal Juz Amma sambil paham artinya**.
 Anak berlayar bersama Pipo si penyu 🐢 dari pulau ke pulau. Setiap pulau = satu surat,
 dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq).
 
+## Menu utama
+- **⛵ Mulai Berlayar** – jelajahi pulau satu per satu; tiap pulau berisi 9 tahap berurutan
+  dan pulau berikutnya terbuka setelah pulau sebelumnya selesai.
+- **🧭 Pelayaran Mandiri** – semua surat dan semua aktivitas terbuka tanpa prasyarat.
+  Pilih surat, lalu pilih aktivitas mana saja. Hasil di mode ini tidak mengubah bintang,
+  pulau yang terbuka, atau koleksi.
+- **🧺 Harta Laut** – koleksi oleh-oleh dari pulau yang sudah diselesaikan.
+
 ## Alur per surat
 1. **Pengantar** – 3 slide kisah singkat tentang pesan surat.
 2. **Dengarkan Utuh** – surat diputar otomatis ayat demi ayat, menampilkan tulisan Arab,
