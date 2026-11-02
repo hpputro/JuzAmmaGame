@@ -42,8 +42,18 @@
   const arText = (ayah) => ayah.words.map((w) => w[0]).join(" ");
   const latin = (ayah) => ayah.words.map((w) => w[2]).join(" ");
 
-  /** Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2. */
-  const quizCount = (s) => Math.max(2, Math.ceil(s.ayahs.length / 2));
+  /** Jumlah soal kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2, maksimal 10. */
+  const quizCount = (ayahCount) => Math.min(10, Math.max(2, Math.ceil(ayahCount / 2)));
+  /** Kuis Lanjut Ayat dipecah menjadi beberapa bagian bila surat lebih dari 20 ayat.
+   *  Bagian dibuat sama rata (mis. 36 ayat → ayat 1–18 dan 19–36). */
+  function nextAyahParts(s) {
+    const n = s.ayahs.length;
+    const count = Math.ceil(n / 20);
+    const size = Math.ceil(n / count);
+    const parts = [];
+    for (let from = 1; from <= n; from += size) parts.push({ from, to: Math.min(n, from + size - 1) });
+    return parts;
+  }
   /** Ambil n indeks acak dari kandidat, lalu urutkan sesuai urutan ayat. */
   const pickIdx = (candidates, n) => shuffle(candidates).slice(0, n).sort((x, y) => x - y);
   /** Pengecoh unik: utamakan dari surat yang sama, bila kurang ambil dari surat lain. */
@@ -125,7 +135,7 @@
       ${right ? `<span class="pill">${esc(right)}</span>` : ""}
     </div>`;
   }
-  const stageLabel = (k, s) => `Tahap ${k}/${STAGES.length} · ${STAGES[k - 1]} · ${s.name}`;
+  const stageLabel = (k, s, name) => `Tahap ${k}/${STAGES.length} · ${name || STAGES[k - 1]} · ${s.name}`;
   function progressBar(total, current) {
     let h = '<div class="progress">';
     for (let i = 0; i < total; i++) h += `<span class="${i < current ? "done" : i === current ? "now" : ""}"></span>`;
@@ -214,41 +224,62 @@
     });
   }
 
-  function activityMenu(s) {
-    let list = "";
+  /** Daftar aktivitas sebuah surat; Kuis Lanjut Ayat dipecah per bagian bila > 20 ayat. */
+  function activitiesFor(s) {
+    const list = [];
     ACTIVITIES.forEach((a, i) => {
+      const stage = i + 1;
+      const parts = stage === 5 ? nextAyahParts(s) : [null];
+      parts.forEach((pt, pi) => {
+        const name = parts.length > 1 ? `${STAGES[i]} (${pi + 1})` : STAGES[i];
+        list.push({
+          emoji: a.emoji,
+          name,
+          label: `${stage}. ${name}`,
+          desc: parts.length > 1 ? `Ayat ${pt.from}–${pt.to} · ${a.desc}` : a.desc,
+          start: parts.length > 1 ? (ses) => quizNextAyah(ses, pi) : a.start
+        });
+      });
+    });
+    return list;
+  }
+  function startActivity(s, act) {
+    act.start({ s, mistakes: 0, questions: 0, free: true, activity: act });
+  }
+
+  function activityMenu(s) {
+    const acts = activitiesFor(s);
+    let list = "";
+    acts.forEach((a, i) => {
       list += `<button class="activity" data-i="${i}">
         <span class="emo">${a.emoji}</span>
-        <span><b>${i + 1}. ${esc(STAGES[i])}</b><small>${esc(a.desc)}</small></span>
+        <span><b>${esc(a.label)}</b><small>${esc(a.desc)}</small></span>
       </button>`;
     });
     render(`${topbar("Pelayaran Mandiri", `Surat ${s.name}`)}
       <p>Pilih aktivitas. Tidak harus berurutan!</p>
       <div class="free-list">${list}</div>`, () => {
       bindBack(freeMap);
-      $$(".activity").forEach((el) => el.addEventListener("click", () => {
-        const stage = Number(el.dataset.i) + 1;
-        ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true });
-      }));
+      $$(".activity").forEach((el) => el.addEventListener("click", () => startActivity(s, acts[Number(el.dataset.i)])));
     });
   }
 
   /** Pindah ke tahap berikutnya (mode berlayar) atau selesaikan aktivitas (mode mandiri). */
   function go(ses, finishedStage, nextFn) {
     if (!ses.free) { nextFn(); return; }
-    if (finishedStage >= 5) { freeQuizDone(ses, finishedStage); return; }
+    if (finishedStage >= 5) { freeQuizDone(ses); return; }
     activityMenu(ses.s);
-    toast(`✅ ${STAGES[finishedStage - 1]} selesai!`);
+    toast(`✅ ${ses.activity.name} selesai!`);
   }
   /** Label tombol penutup aktivitas: di mode mandiri menjadi "Selesai". */
   const endLabel = (ses, text, freeText) => ses.free ? (freeText || "Selesai ✓") : text;
   /** Tombol kembali: ke peta (mode berlayar) atau ke menu aktivitas (mode mandiri). */
   function exit(ses) { return ses.free ? activityMenu(ses.s) : map(); }
 
-  function freeQuizDone(ses, stage) {
-    const { s, mistakes, questions } = ses;
+  function freeQuizDone(ses) {
+    const { s, mistakes, questions, activity } = ses;
     render(`<section class="screen result">
-      <h2>${esc(STAGES[stage - 1])} selesai!</h2>
+      <h2>${esc(activity.name)} selesai!</h2>
       <div class="big-stars">${mistakes === 0 ? "🏆" : "👍"}</div>
       <p>${mistakes === 0 ? "Tanpa kesalahan! Masya Allah!" : "Bagus! Terus berlatih ya."}<br>
         <small>Surat ${esc(s.name)} · ${questions} soal · ${mistakes} kesalahan</small></p>
@@ -256,7 +287,7 @@
       <button class="btn" id="again">↻ Ulangi kuis ini</button>
       <button class="btn secondary" id="menu">Pilih aktivitas lain</button>
     </section>`, () => {
-      on("#again", () => ACTIVITIES[stage - 1].start({ s, mistakes: 0, questions: 0, free: true }));
+      on("#again", () => startActivity(s, activity));
       on("#menu", () => activityMenu(s));
     });
   }
@@ -486,14 +517,14 @@
 
   // ---- Mesin kuis pilihan ganda (dipakai tahap 5, 6, 8) ----
   // q = { prompt, audio, autoplay, options: [{ html, correct }], arabicOptions, onCorrect }
-  function mcQuiz(ses, stage, title, questions, qi, next) {
+  function mcQuiz(ses, stage, title, questions, qi, next, name) {
     const { s } = ses;
     const q = questions[qi];
     const opts = shuffle(q.options);
     let html = "";
     opts.forEach((o, i) => { html += `<button class="option ${q.arabicOptions ? "ar" : ""}" data-i="${i}">${o.html}</button>`; });
 
-    render(`${topbar(stageLabel(stage, s), title, `${qi + 1}/${questions.length}`)}
+    render(`${topbar(stageLabel(stage, s, name), title, `${qi + 1}/${questions.length}`)}
       ${progressBar(questions.length, qi)}
       <div class="card question">
         ${q.prompt}
@@ -523,19 +554,23 @@
           toast("Hampir! Coba lagi 🙂");
         }
       }));
-      on("#next", () => qi < questions.length - 1 ? mcQuiz(ses, stage, title, questions, qi + 1, next) : next());
+      on("#next", () => qi < questions.length - 1 ? mcQuiz(ses, stage, title, questions, qi + 1, next, name) : next());
     });
   }
 
   // ---- 5. Kuis Lanjut Ayat ----
-  function quizNextAyah(ses) {
+  function quizNextAyah(ses, part = 0) {
     const { s } = ses;
-    // ayat terakhir tidak punya lanjutan; ayat kembar (teks sama di tempat lain,
-    // mis. Al-Muthaffifin 9 & 20) dilewati karena lanjutannya jadi ambigu
+    const parts = nextAyahParts(s);
+    const { from, to } = parts[part];
+    const name = parts.length > 1 ? `${STAGES[4]} (${part + 1})` : STAGES[4];
+    // hanya ayat di bagian ini; ayat terakhir surat tidak punya lanjutan; ayat kembar
+    // (teks sama di tempat lain, mis. Al-Muthaffifin 9 & 20) dilewati karena lanjutannya ambigu
     const texts = s.ayahs.map(arText);
-    const cands = s.ayahs.map((_, i) => i).slice(0, -1)
+    const cands = s.ayahs.map((_, i) => i)
+      .filter((i) => i >= from - 1 && i <= to - 1 && i < s.ayahs.length - 1)
       .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
-    const picks = pickIdx(cands, quizCount(s));
+    const picks = pickIdx(cands, quizCount(to - from + 1));
     const qs = picks.map((a) => {
       const correct = arText(s.ayahs[a + 1]);
       const same = s.ayahs.filter((_, i) => i !== a && i !== a + 1).map(arText);
@@ -552,14 +587,16 @@
         onCorrect: () => play(ayahUrl(s.id, a + 2))
       };
     });
-    mcQuiz(ses, 5, "Pilih ayat berikutnya", qs, 0, () => go(ses, 5, () => quizMissingWord(ses)));
+    const title = parts.length > 1 ? `Pilih ayat berikutnya · ayat ${from}–${to}` : "Pilih ayat berikutnya";
+    const next = part < parts.length - 1 ? () => quizNextAyah(ses, part + 1) : () => quizMissingWord(ses);
+    mcQuiz(ses, 5, title, qs, 0, () => go(ses, 5, next), name);
   }
 
   // ---- 6. Kuis Kata yang Hilang ----
   function quizMissingWord(ses) {
     const { s } = ses;
     const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    const picks = pickIdx(cands, quizCount(s));
+    const picks = pickIdx(cands, quizCount(s.ayahs.length));
     const qs = picks.map((a) => {
       const ayah = s.ayahs[a];
       const blank = Math.floor(Math.random() * ayah.words.length);
@@ -594,7 +631,7 @@
   function startArrange(ses) {
     const { s } = ses;
     const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    arrange(ses, pickIdx(cands, quizCount(s)), 0);
+    arrange(ses, pickIdx(cands, quizCount(s.ayahs.length)), 0);
   }
   function arrange(ses, picks, q) {
     const { s } = ses;
@@ -646,7 +683,7 @@
   // ---- 8. Kuis Pahami Arti ----
   function quizMeaning(ses) {
     const { s } = ses;
-    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(s));
+    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(s.ayahs.length));
     const qs = picks.map((a) => {
       const correct = s.ayahs[a].tr;
       // jangan jadikan arti ayat kembar sebagai pengecoh (artinya sama)
