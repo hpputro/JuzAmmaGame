@@ -57,11 +57,12 @@
   /** Ambil n indeks acak dari kandidat, lalu urutkan sesuai urutan ayat. */
   const pickIdx = (candidates, n) => shuffle(candidates).slice(0, n).sort((x, y) => x - y);
   /** Pengecoh unik: utamakan dari surat yang sama, bila kurang ambil dari surat lain. */
-  function distractors(correct, samePool, otherPool, k) {
+  function distractors(correct, samePool, otherPool, k, key = (v) => v) {
     const out = [];
+    const used = new Set([key(correct)]);
     for (const v of shuffle(samePool).concat(shuffle(otherPool))) {
       if (out.length >= k) break;
-      if (v !== correct && !out.includes(v)) out.push(v);
+      if (!used.has(key(v))) { used.add(key(v)); out.push(v); }
     }
     return out;
   }
@@ -510,7 +511,13 @@
     const q = questions[qi];
     const opts = shuffle(q.options);
     let html = "";
-    opts.forEach((o, i) => { html += `<button class="option ${q.arabicOptions ? "ar" : ""}" data-i="${i}">${o.html}</button>`; });
+    const optClass = q.optionClass || (q.arabicOptions ? "ar" : "");
+    opts.forEach((o, i) => {
+      const btn = `<button class="option ${optClass}" data-i="${i}">${o.html}</button>`;
+      html += o.audio
+        ? `<div class="opt-row">${btn}<button class="icon-btn opt-play" data-play="${i}" aria-label="Dengar pilihan ini">🔊</button></div>`
+        : btn;
+    });
 
     render(`${topbar(stageLabel(stage, s), title, `${qi + 1}/${questions.length}`)}
       ${progressBar(questions.length, qi)}
@@ -526,6 +533,7 @@
         on("#listen", () => play(q.audio));
         if (q.autoplay) play(q.audio);
       }
+      $$("[data-play]").forEach((b) => b.addEventListener("click", () => play(opts[Number(b.dataset.play)].audio)));
       let solved = false;
       ses.questions++;
       $$(".option").forEach((el) => el.addEventListener("click", () => {
@@ -556,18 +564,25 @@
       .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
     const picks = pickIdx(cands, quizCount(ses, "next"));
     const qs = picks.map((a) => {
-      const correct = arText(s.ayahs[a + 1]);
-      const same = s.ayahs.filter((_, i) => i !== a && i !== a + 1).map(arText);
-      const others = otherSurahs(s).flatMap((x) => x.ayahs.map(arText));
-      const wrong = distractors(correct, same, others, 2);
+      // pilihan berupa rujukan ayat {sid, n, ayah} agar bisa tampil transliterasi & audionya
+      const ref = (x, i) => ({ sid: x.id, n: i + 1, ayah: x.ayahs[i] });
+      const correct = ref(s, a + 1);
+      const same = s.ayahs.map((_, i) => ref(s, i)).filter((r) => r.n - 1 !== a && r.n - 1 !== a + 1);
+      const others = otherSurahs(s).flatMap((x) => x.ayahs.map((_, i) => ref(x, i)));
+      const wrong = distractors(correct, same, others, 2, (r) => arText(r.ayah));
+      const opt = (r, ok) => ({
+        html: `<span class="opt-ar">${esc(arText(r.ayah))}</span><span class="opt-lt">${esc(latin(r.ayah))}</span>`,
+        audio: ayahUrl(r.sid, r.n),
+        correct: ok
+      });
       return {
         prompt: `<p class="q-label">Dengarkan ayat ${a + 1}. Ayat berikutnya adalah…</p>
           <p class="arabic">${esc(arText(s.ayahs[a]))}</p>
           <p class="latin">${esc(latin(s.ayahs[a]))}</p>`,
         audio: ayahUrl(s.id, a + 1),
         autoplay: true,
-        arabicOptions: true,
-        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false }))),
+        optionClass: "ayah-opt",
+        options: [opt(correct, true)].concat(wrong.map((w) => opt(w, false))),
         onCorrect: () => play(ayahUrl(s.id, a + 2))
       };
     });
@@ -594,7 +609,7 @@
         prompt: `<p class="q-label">Ayat ${a + 1}: kata apa yang hilang?</p>
           <p class="arabic" id="q-ar">${ar}</p>
           <p class="latin" id="q-lt">${lt}</p>
-          <p class="translation show">${esc(ayah.tr)}</p>`,
+          <p class="translation" id="q-tr">🔒 Arti ayat muncul setelah jawabanmu benar</p>`,
         audio: ayahUrl(s.id, a + 1),
         autoplay: false,
         arabicOptions: true,
@@ -602,6 +617,8 @@
         onCorrect: () => {
           $("#q-ar").textContent = arText(ayah);
           $("#q-lt").textContent = latin(ayah);
+          $("#q-tr").textContent = ayah.tr;
+          $("#q-tr").classList.add("show");
           play(wordUrl(s.id, a + 1, blank + 1));
         }
       };

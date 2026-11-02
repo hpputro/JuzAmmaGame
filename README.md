@@ -20,9 +20,10 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
 3. **Kenali Kata** – ketuk tiap kata Arab untuk melihat arti, transliterasi, dan mendengar
    audionya; ayat berikutnya terbuka setelah semua kata dikenal.
 4. **Harta Terpendam** – 3 halaman bergantian (Lanjut/Sebelumnya): pesan surat, nasihat untuk anak, dan "Tahukah Kamu?".
-5. **Kuis Lanjut Ayat** – dengar sebuah ayat (ada audio), pilih ayat sesudahnya.
-6. **Kuis Kata yang Hilang** – satu kata dikosongkan pada tulisan Arab dan transliterasi,
-   arti ayat ditampilkan; pilih kata yang tepat.
+5. **Kuis Lanjut Ayat** – dengar sebuah ayat (ada audio), pilih ayat sesudahnya. Tiap pilihan
+   menampilkan tulisan Arab + transliterasi dan punya tombol 🔊 untuk mendengarnya.
+6. **Kuis Kata yang Hilang** – satu kata dikosongkan pada tulisan Arab dan transliterasi;
+   pilih kata yang tepat. Arti ayat baru muncul setelah jawaban benar.
 7. **Kuis Susun Ayat** – susun potongan kata menjadi ayat yang utuh.
 8. **Kuis Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
 9. **Hasil** – 1–3 bintang + hadiah *Harta Laut* untuk koleksi.

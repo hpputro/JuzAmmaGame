@@ -236,3 +236,11 @@ h2 { font-size: 1.35rem; color: var(--sea-dark); }
   border: 5px solid #fff; box-shadow: 0 6px 0 rgba(0, 0, 0, .1); animation: pop .35s ease-out;
 }
 .treasure p, .treasure li { font-size: 1.05rem; }
+
+/* ---------- pilihan berupa ayat (Kuis Lanjut Ayat) ---------- */
+.opt-row { display: flex; gap: 8px; align-items: stretch; }
+.opt-row .option { flex: 1; min-width: 0; }
+.opt-row .opt-play { width: 48px; height: auto; border-radius: 16px; flex-shrink: 0; }
+.option.ayah-opt { display: flex; flex-direction: column; gap: 2px; }
+.ayah-opt .opt-ar { font-family: "Amiri Quran", "Amiri", serif; font-size: 1.5rem; line-height: 2; direction: rtl; text-align: right; }
+.ayah-opt .opt-lt { font-style: italic; color: var(--sea-dark); font-size: .95rem; }
