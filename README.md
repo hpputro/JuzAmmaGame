@@ -27,12 +27,7 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
 8. **Kuis Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
 9. **Hasil** – 1–3 bintang + hadiah *Harta Laut* untuk koleksi.
 
-Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2, maksimal 10.
-Khusus **Kuis Lanjut Ayat**: bila surat lebih dari 20 ayat, kuis dipecah menjadi beberapa
-bagian sama rata, misalnya Al-Muthaffifin (36 ayat) → *Lanjut Ayat (1)* ayat 1–18 dan
-*Lanjut Ayat (2)* ayat 19–36, masing-masing dengan aturan jumlah soal di atas. Di mode
-berlayar bagian-bagian ini dimainkan berurutan; di Pelayaran Mandiri tiap bagian punya
-tombol sendiri.
+Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2.
 Bintang dihitung dari rata-rata kesalahan per soal: ≤ 0,2 → 3 bintang, ≤ 0,6 → 2 bintang, selebihnya 1.
 
 Pulau berikutnya terbuka setelah pulau sebelumnya selesai. Progres dan pengaturan
