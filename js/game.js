@@ -42,8 +42,20 @@
   const arText = (ayah) => ayah.words.map((w) => w[0]).join(" ");
   const latin = (ayah) => ayah.words.map((w) => w[2]).join(" ");
 
-  /** Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2. */
-  const quizCount = (s) => Math.max(2, Math.ceil(s.ayahs.length / 2));
+  /** Jumlah soal kuis, tergantung mode.
+   *  Mulai Berlayar   : semua kuis = separuh jumlah ayat, min 2, maks 10.
+   *  Pelayaran Mandiri: Lanjut Ayat = separuh jumlah ayat (min 2);
+   *                     Kata yang Hilang & Susun Ayat = jumlah ayat;
+   *                     Pahami Arti = sama seperti Mulai Berlayar.
+   *  Jumlah sebenarnya dibatasi oleh banyaknya ayat yang bisa dijadikan soal. */
+  function quizCount(ses, kind) {
+    const n = ses.s.ayahs.length;
+    const half = Math.max(2, Math.ceil(n / 2));
+    if (!ses.free) return Math.min(10, half);
+    if (kind === "next") return half;
+    if (kind === "missing" || kind === "arrange") return n;
+    return Math.min(10, half);
+  }
   /** Ambil n indeks acak dari kandidat, lalu urutkan sesuai urutan ayat. */
   const pickIdx = (candidates, n) => shuffle(candidates).slice(0, n).sort((x, y) => x - y);
   /** Pengecoh unik: utamakan dari surat yang sama, bila kurang ambil dari surat lain. */
@@ -535,7 +547,7 @@
     const texts = s.ayahs.map(arText);
     const cands = s.ayahs.map((_, i) => i).slice(0, -1)
       .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
-    const picks = pickIdx(cands, quizCount(s));
+    const picks = pickIdx(cands, quizCount(ses, "next"));
     const qs = picks.map((a) => {
       const correct = arText(s.ayahs[a + 1]);
       const same = s.ayahs.filter((_, i) => i !== a && i !== a + 1).map(arText);
@@ -559,7 +571,7 @@
   function quizMissingWord(ses) {
     const { s } = ses;
     const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    const picks = pickIdx(cands, quizCount(s));
+    const picks = pickIdx(cands, quizCount(ses, "missing"));
     const qs = picks.map((a) => {
       const ayah = s.ayahs[a];
       const blank = Math.floor(Math.random() * ayah.words.length);
@@ -594,7 +606,7 @@
   function startArrange(ses) {
     const { s } = ses;
     const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    arrange(ses, pickIdx(cands, quizCount(s)), 0);
+    arrange(ses, pickIdx(cands, quizCount(ses, "arrange")), 0);
   }
   function arrange(ses, picks, q) {
     const { s } = ses;
@@ -646,7 +658,7 @@
   // ---- 8. Kuis Pahami Arti ----
   function quizMeaning(ses) {
     const { s } = ses;
-    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(s));
+    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(ses, "meaning"));
     const qs = picks.map((a) => {
       const correct = s.ayahs[a].tr;
       // jangan jadikan arti ayat kembar sebagai pengecoh (artinya sama)

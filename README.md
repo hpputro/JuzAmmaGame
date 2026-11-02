@@ -27,7 +27,17 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
 8. **Kuis Pahami Arti** – dengar ayat, pilih terjemahan yang benar.
 9. **Hasil** – 1–3 bintang + hadiah *Harta Laut* untuk koleksi.
 
-Jumlah soal tiap kuis = separuh jumlah ayat (dibulatkan ke atas), minimal 2.
+Jumlah soal kuis (separuh = dibulatkan ke atas):
+
+| Kuis | Mulai Berlayar | Pelayaran Mandiri |
+|---|---|---|
+| Lanjut Ayat | separuh jumlah ayat, min 2, maks 10 | separuh jumlah ayat, min 2 |
+| Kata yang Hilang | separuh jumlah ayat, min 2, maks 10 | jumlah ayat |
+| Susun Ayat | separuh jumlah ayat, min 2, maks 10 | jumlah ayat |
+| Pahami Arti | separuh jumlah ayat, min 2, maks 10 | separuh jumlah ayat, min 2, maks 10 |
+
+Ayat yang tidak bisa dijadikan soal (mis. ayat satu kata untuk Susun Ayat) dilewati,
+sehingga jumlah soal bisa sedikit lebih kecil.
 Bintang dihitung dari rata-rata kesalahan per soal: ≤ 0,2 → 3 bintang, ≤ 0,6 → 2 bintang, selebihnya 1.
 
 Pulau berikutnya terbuka setelah pulau sebelumnya selesai. Progres dan pengaturan
