@@ -467,30 +467,39 @@
   }
 
   // ---- 4. Harta Terpendam / Tahukah Kamu ----
-  function treasure(ses) {
+  function treasure(ses, idx = 0) {
     const { s } = ses;
     const t = s.treasure;
     let advice = "";
     t.advice.forEach((x) => { advice += `<li>${esc(x)}</li>`; });
-    render(`${topbar(stageLabel(4, s), "Harta Terpendam")}
-      <div class="chest" aria-hidden="true">💎</div>
-      <div class="card treasure">
-        <h3>📜 Pesan surat ${esc(s.name)}</h3>
-        <p>${esc(t.message)}</p>
-      </div>
-      <div class="card treasure">
-        <h3>💡 Nasihat untukmu</h3>
-        <ul>${advice}</ul>
-      </div>
-      <div class="card treasure fact">
-        <h3>🤔 Tahukah Kamu?</h3>
-        <p>${esc(t.fact)}</p>
+    const slides = [
+      { art: "📜", title: `Pesan surat ${s.name}`, body: `<p>${esc(t.message)}</p>`, talk: "Ini pesan penting dari surat yang baru kamu pelajari." },
+      { art: "💡", title: "Nasihat untukmu", body: `<ul>${advice}</ul>`, talk: "Yuk, kita amalkan bersama!" },
+      { art: "🤔", title: "Tahukah Kamu?", body: `<p>${esc(t.fact)}</p>`, talk: "Ada fakta menarik nih!", fact: true }
+    ];
+    const sl = slides[idx];
+    const last = idx === slides.length - 1;
+    let dots = "";
+    slides.forEach((_, i) => { dots += `<i class="${i === idx ? "on" : ""}"></i>`; });
+    const lastTalk = ses.free ? "Semoga bermanfaat! Simpan harta ini di hatimu ya." : "Sudah siap? Saatnya kuis! Ada 4 kuis menunggumu.";
+
+    render(`${topbar(stageLabel(4, s), "Harta Terpendam", `${idx + 1}/${slides.length}`)}
+      ${progressBar(slides.length, idx)}
+      <div class="treasure-art" aria-hidden="true">${sl.art}</div>
+      <div class="card treasure ${sl.fact ? "fact" : ""}">
+        <h3>${esc(sl.title)}</h3>
+        ${sl.body}
       </div>
       <div class="story-talk"><div class="mascot">${MASCOT}</div>
-        <div class="bubble">${ses.free ? "Semoga bermanfaat! Simpan harta ini di hatimu ya." : "Sudah siap? Saatnya kuis! Ada 4 kuis menunggumu."}</div></div>
-      <button class="btn coral" id="next">${ses.free ? "Selesai ✓" : "Mulai kuis ›"}</button>`, () => {
+        <div class="bubble"><div class="dots">${dots}</div>${esc(last ? lastTalk : sl.talk)}</div></div>
+      <div class="spacer"></div>
+      <div class="row">
+        <button class="btn secondary" id="prev" ${idx === 0 ? "disabled" : ""}>‹ Sebelumnya</button>
+        <button class="btn ${last ? "coral" : ""}" id="next">${last ? endLabel(ses, "Mulai kuis ›") : "Lanjut ›"}</button>
+      </div>`, () => {
       bindBack(() => exit(ses));
-      on("#next", () => go(ses, 4, () => quizNextAyah(ses)));
+      on("#prev", () => { if (idx > 0) treasure(ses, idx - 1); });
+      on("#next", () => last ? go(ses, 4, () => quizNextAyah(ses)) : treasure(ses, idx + 1));
     });
   }
 

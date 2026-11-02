@@ -19,7 +19,7 @@ dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq)
    diulang, dan berapa kali satu paket diulang. Ada tombol jeda/lanjutkan.
 3. **Kenali Kata** – ketuk tiap kata Arab untuk melihat arti, transliterasi, dan mendengar
    audionya; ayat berikutnya terbuka setelah semua kata dikenal.
-4. **Harta Terpendam** – pesan/simpulan surat, nasihat untuk anak, dan "Tahukah Kamu?".
+4. **Harta Terpendam** – 3 halaman bergantian (Lanjut/Sebelumnya): pesan surat, nasihat untuk anak, dan "Tahukah Kamu?".
 5. **Kuis Lanjut Ayat** – dengar sebuah ayat (ada audio), pilih ayat sesudahnya.
 6. **Kuis Kata yang Hilang** – satu kata dikosongkan pada tulisan Arab dan transliterasi,
    arti ayat ditampilkan; pilih kata yang tepat.
