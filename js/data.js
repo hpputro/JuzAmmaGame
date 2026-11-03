@@ -174,6 +174,48 @@ const SURAHS = [
     ]
   },
   {
+    id: 98,
+    name: "Al-Bayyinah",
+    meaning: "Bukti yang Nyata",
+    place: "Dermaga Lentera",
+    emoji: "🏮",
+    reward: { emoji: "🦪", name: "Kerang Mutiara", desc: "Mutiaranya bersinar terang di dasar laut, seperti bukti nyata dari Allah yang menerangi jalan." },
+    story: [
+      { art: "🏮", text: "Dulu banyak orang bingung dan tidak mau meninggalkan kesesatan, sampai datang bukti yang nyata." },
+      { art: "📜", text: "Bukti itu adalah Rasulullah ﷺ yang membacakan lembaran-lembaran suci, yaitu Al-Qur'an." },
+      { art: "🤲", text: "Allah memerintahkan kita beribadah dengan ikhlas, salat, dan zakat. Yuk, jadi sebaik-baik makhluk!" }
+    ],
+    treasure: {
+      message: "Allah mengutus Rasul dengan membawa bukti yang nyata, yaitu Al-Qur'an. Inti agama yang lurus adalah menyembah Allah dengan ikhlas, melaksanakan salat, dan menunaikan zakat. Orang yang beriman dan beramal saleh adalah sebaik-baik makhluk; Allah rida kepada mereka dan membalas mereka dengan surga ‘Adn.",
+      advice: [
+        "Beribadahlah dengan ikhlas, karena Allah, bukan karena ingin dipuji.",
+        "Jaga salat lima waktu.",
+        "Belajarlah berbagi sejak kecil, misalnya bersedekah dari uang jajan.",
+        "Jadilah anak yang beriman dan suka berbuat baik, supaya termasuk sebaik-baik makhluk.",
+        "Takutlah kepada Allah, baik saat sendirian maupun saat bersama orang lain."
+      ],
+      fact: "Rasulullah ﷺ pernah berkata kepada sahabat Ubay bin Ka‘b: “Allah memerintahkanku membacakan surat Lam yakunil ladzīna kafarū kepadamu.” Ubay bertanya, “Allah menyebut namaku?” Nabi menjawab, “Ya.” Ubay pun menangis karena terharu (HR. Bukhari dan Muslim)."
+    },
+    ayahs: [
+      { words: [["لَمْ", "tidak", "Lam"], ["يَكُنِ", "adalah", "yakunil"], ["ٱلَّذِينَ", "orang-orang yang", "ladzīna"], ["كَفَرُوا۟", "kafir", "kafarū"], ["مِنْ", "dari", "min"], ["أَهْلِ", "golongan", "ahlil"], ["ٱلْكِتَٰبِ", "Ahli Kitab", "kitābi"], ["وَٱلْمُشْرِكِينَ", "dan orang-orang musyrik", "wal musyrikīna"], ["مُنفَكِّينَ", "meninggalkan (agama mereka)", "munfakkīna"], ["حَتَّىٰ", "sampai", "hattā"], ["تَأْتِيَهُمُ", "datang kepada mereka", "ta'tiyahumul"], ["ٱلْبَيِّنَةُ", "bukti yang nyata", "bayyinah"]],
+        tr: "Orang-orang yang kafir dari golongan Ahli Kitab dan orang-orang musyrik tidak akan meninggalkan (agama mereka) sampai datang kepada mereka bukti yang nyata," },
+      { words: [["رَسُولٌ", "seorang Rasul", "Rasūlum"], ["مِّنَ", "dari", "minal"], ["ٱللَّهِ", "Allah", "lāhi"], ["يَتْلُوا۟", "yang membacakan", "yatlū"], ["صُحُفًا", "lembaran-lembaran", "shuhufam"], ["مُّطَهَّرَةً", "yang suci", "muthahharah"]],
+        tr: "(yaitu) seorang Rasul dari Allah (Muhammad) yang membacakan lembaran-lembaran yang suci (Al-Qur'an)," },
+      { words: [["فِيهَا", "di dalamnya", "Fīhā"], ["كُتُبٌ", "(isi) kitab-kitab", "kutubun"], ["قَيِّمَةٌ", "yang lurus", "qayyimah"]],
+        tr: "di dalamnya terdapat (isi) kitab-kitab yang lurus (benar)." },
+      { words: [["وَمَا", "dan tidaklah", "Wa mā"], ["تَفَرَّقَ", "berpecah belah", "tafarraqal"], ["ٱلَّذِينَ", "orang-orang yang", "ladzīna"], ["أُوتُوا۟", "diberi", "ūtul"], ["ٱلْكِتَٰبَ", "Kitab", "kitāba"], ["إِلَّا", "melainkan", "illā"], ["مِنۢ", "dari", "mim"], ["بَعْدِ", "sesudah", "ba'di"], ["مَا", "(apa yang)", "mā"], ["جَآءَتْهُمُ", "datang kepada mereka", "jā'athumul"], ["ٱلْبَيِّنَةُ", "bukti yang nyata", "bayyinah"]],
+        tr: "Dan tidaklah terpecah-belah orang-orang Ahli Kitab melainkan setelah datang kepada mereka bukti yang nyata." },
+      { words: [["وَمَآ", "dan tidaklah", "Wa mā"], ["أُمِرُوٓا۟", "mereka diperintah", "umirū"], ["إِلَّا", "kecuali", "illā"], ["لِيَعْبُدُوا۟", "supaya menyembah", "liya'budul"], ["ٱللَّهَ", "Allah", "lāha"], ["مُخْلِصِينَ", "dengan ikhlas", "mukhlishīna"], ["لَهُ", "kepada-Nya", "lahud"], ["ٱلدِّينَ", "(dalam menjalankan) agama", "dīna"], ["حُنَفَآءَ", "dengan lurus", "hunafā'a"], ["وَيُقِيمُوا۟", "dan melaksanakan", "wa yuqīmush"], ["ٱلصَّلَوٰةَ", "salat", "shalāta"], ["وَيُؤْتُوا۟", "dan menunaikan", "wa yu'tuz"], ["ٱلزَّكَوٰةَ", "zakat", "zakāta"], ["وَذَٰلِكَ", "dan yang demikian itulah", "wa dzālika"], ["دِينُ", "agama", "dīnul"], ["ٱلْقَيِّمَةِ", "yang lurus", "qayyimah"]],
+        tr: "Padahal mereka hanya diperintah menyembah Allah dengan ikhlas menaati-Nya semata-mata karena (menjalankan) agama, dan juga agar melaksanakan salat dan menunaikan zakat; dan yang demikian itulah agama yang lurus (benar)." },
+      { words: [["إِنَّ", "sesungguhnya", "Innal"], ["ٱلَّذِينَ", "orang-orang yang", "ladzīna"], ["كَفَرُوا۟", "kafir", "kafarū"], ["مِنْ", "dari", "min"], ["أَهْلِ", "golongan", "ahlil"], ["ٱلْكِتَٰبِ", "Ahli Kitab", "kitābi"], ["وَٱلْمُشْرِكِينَ", "dan orang-orang musyrik", "wal musyrikīna"], ["فِى", "(masuk) ke dalam", "fī"], ["نَارِ", "neraka", "nāri"], ["جَهَنَّمَ", "Jahanam", "jahannama"], ["خَٰلِدِينَ", "mereka kekal", "khālidīna"], ["فِيهَآ", "di dalamnya", "fīhā"], ["أُو۟لَٰٓئِكَ", "mereka itu", "ulā'ika"], ["هُمْ", "mereka", "hum"], ["شَرُّ", "seburuk-buruk", "syarrul"], ["ٱلْبَرِيَّةِ", "makhluk", "bariyyah"]],
+        tr: "Sungguh, orang-orang yang kafir dari golongan Ahli Kitab dan orang-orang musyrik (akan masuk) ke neraka Jahanam; mereka kekal di dalamnya selama-lamanya. Mereka itu adalah sejahat-jahat makhluk." },
+      { words: [["إِنَّ", "sesungguhnya", "Innal"], ["ٱلَّذِينَ", "orang-orang yang", "ladzīna"], ["ءَامَنُوا۟", "beriman", "āmanū"], ["وَعَمِلُوا۟", "dan mengerjakan", "wa 'amilush"], ["ٱلصَّٰلِحَٰتِ", "kebajikan", "shālihāti"], ["أُو۟لَٰٓئِكَ", "mereka itu", "ulā'ika"], ["هُمْ", "mereka", "hum"], ["خَيْرُ", "sebaik-baik", "khairul"], ["ٱلْبَرِيَّةِ", "makhluk", "bariyyah"]],
+        tr: "Sungguh, orang-orang yang beriman dan mengerjakan kebajikan, mereka itu adalah sebaik-baik makhluk." },
+      { words: [["جَزَآؤُهُمْ", "balasan mereka", "Jazā'uhum"], ["عِندَ", "di sisi", "'inda"], ["رَبِّهِمْ", "Tuhan mereka", "rabbihim"], ["جَنَّٰتُ", "surga-surga", "jannātu"], ["عَدْنٍ", "‘Adn", "'adnin"], ["تَجْرِى", "mengalir", "tajrī"], ["مِن", "dari", "min"], ["تَحْتِهَا", "bawahnya", "tahtihal"], ["ٱلْأَنْهَٰرُ", "sungai-sungai", "anhāru"], ["خَٰلِدِينَ", "mereka kekal", "khālidīna"], ["فِيهَآ", "di dalamnya", "fīhā"], ["أَبَدًا", "selama-lamanya", "abadar"], ["رَّضِىَ", "rida", "radhiyal"], ["ٱللَّهُ", "Allah", "lāhu"], ["عَنْهُمْ", "terhadap mereka", "'anhum"], ["وَرَضُوا۟", "dan mereka pun rida", "wa radhū"], ["عَنْهُ", "kepada-Nya", "'anh"], ["ذَٰلِكَ", "yang demikian itu", "dzālika"], ["لِمَنْ", "bagi orang yang", "liman"], ["خَشِىَ", "takut", "khasyiya"], ["رَبَّهُۥ", "kepada Tuhannya", "rabbah"]],
+        tr: "Balasan mereka di sisi Tuhan mereka ialah surga ‘Adn yang mengalir di bawahnya sungai-sungai; mereka kekal di dalamnya selama-lamanya. Allah rida terhadap mereka dan mereka pun rida kepada-Nya. Yang demikian itu adalah (balasan) bagi orang yang takut kepada Tuhannya." }
+    ]
+  },
+  {
     id: 96,
     name: "Al-'Alaq",
     meaning: "Segumpal Darah",
