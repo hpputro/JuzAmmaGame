@@ -44,6 +44,13 @@
   };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const arText = (ayah) => ayah.words.map((w) => w[0]).join(" ");
+  /** Inti teks ayat untuk mendeteksi ayat (hampir) kembar: tanpa harakat/tanda baca
+   *  Al-Qur'an, alif wasla disamakan, dan huruf و/ف di awal ayat diabaikan.
+   *  Contoh: Al-Insyirah 5 (فَإِنَّ مَعَ ٱلْعُسْرِ يُسْرًا) dan 6 (إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا). */
+  const coreText = (ayah) => arText(ayah)
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/\u0671/g, "\u0627")
+    .replace(/^[\u0648\u0641]/, "");
   const latin = (ayah) => ayah.words.map((w) => w[2]).join(" ");
 
   /** Jumlah soal kuis, tergantung mode.
@@ -681,7 +688,8 @@
       const correct = ref(s, a + 1);
       const same = s.ayahs.map((_, i) => ref(s, i)).filter((r) => r.n - 1 !== a && r.n - 1 !== a + 1);
       const others = otherSurahs(s).flatMap((x) => x.ayahs.map((_, i) => ref(x, i)));
-      const wrong = distractors(correct, same, others, 2, (r) => arText(r.ayah));
+      // ayat hampir kembar dengan jawaban (mis. Al-Insyirah 5 & 6) tidak dijadikan pengecoh
+      const wrong = distractors(correct, same, others, 2, (r) => coreText(r.ayah));
       const opt = (r, ok) => ({
         html: `<span class="opt-ar">${esc(arText(r.ayah))}</span><span class="opt-lt">${esc(latin(r.ayah))}</span>`,
         audio: ayahUrl(r.sid, r.n),
@@ -798,11 +806,13 @@
     const { s } = ses;
     const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(ses, "meaning"));
     const qs = picks.map((a) => {
-      const correct = s.ayahs[a].tr;
-      // jangan jadikan arti ayat kembar sebagai pengecoh (artinya sama)
-      const same = s.ayahs.filter((x) => arText(x) !== arText(s.ayahs[a])).map((x) => x.tr);
-      const others = otherSurahs(s).flatMap((x) => x.ayahs.map((y) => y.tr));
-      const wrong = distractors(correct, same, others, 2);
+      // pengecoh dipilih per ayat dan dibedakan dengan coreText, supaya arti ayat (hampir)
+      // kembar tidak muncul dua kali atau bersaing dengan jawaban (mis. Al-Insyirah 5 & 6)
+      const correctAyah = s.ayahs[a];
+      const correct = correctAyah.tr;
+      const same = s.ayahs.filter((x) => x !== correctAyah);
+      const others = otherSurahs(s).flatMap((x) => x.ayahs);
+      const wrong = distractors(correctAyah, same, others, 2, coreText).map((x) => x.tr);
       return {
         label: `Ayat ${a + 1}`,
         prompt: `<p class="q-label">Dengarkan, lalu pilih artinya</p>

@@ -280,6 +280,47 @@ const SURAHS = [
     ]
   },
   {
+    id: 94,
+    name: "Al-Insyirah",
+    meaning: "Kelapangan",
+    place: "Pantai Lapang",
+    emoji: "🏖️",
+    reward: { emoji: "🐬", name: "Lumba-lumba Ceria", desc: "Lumba-lumba yang selalu tersenyum walau ombak besar. Ingat, bersama kesulitan ada kemudahan!" },
+    story: [
+      { art: "😔", text: "Pernahkah kamu merasa sedih atau kesulitan? Rasulullah ﷺ juga pernah mengalami masa-masa yang berat." },
+      { art: "🌈", text: "Allah menghibur Nabi: bersama kesulitan pasti ada kemudahan. Kalimat ini bahkan disebut dua kali!" },
+      { art: "💪", text: "Setelah selesai satu tugas, lanjutkan dengan kebaikan berikutnya, dan berharaplah hanya kepada Allah." }
+    ],
+    treasure: {
+      message: "Allah telah melapangkan dada Nabi Muhammad ﷺ, meringankan bebannya, dan meninggikan namanya. Allah menegaskan dua kali bahwa bersama kesulitan ada kemudahan. Karena itu, jangan berputus asa, teruslah bersungguh-sungguh, dan berharaplah hanya kepada Allah.",
+      advice: [
+        "Saat menghadapi kesulitan, jangan menyerah. Ingat, bersama kesulitan ada kemudahan.",
+        "Selesai mengerjakan PR? Lanjutkan dengan kebaikan lain, misalnya mengaji atau membantu orang tua.",
+        "Berdoalah dan berharaplah hanya kepada Allah.",
+        "Hiburlah temanmu yang sedang sedih dengan kata-kata yang baik."
+      ],
+      fact: "Nama Nabi Muhammad ﷺ benar-benar ditinggikan: namanya disebut bersama nama Allah dalam syahadat, azan, dan iqamah yang dikumandangkan setiap hari di seluruh dunia. Surat ini juga dikenal dengan nama Asy-Syarh atau Alam Nasyrah."
+    },
+    ayahs: [
+      { words: [["أَلَمْ", "bukankah", "Alam"], ["نَشْرَحْ", "Kami telah melapangkan", "nasyrah"], ["لَكَ", "untukmu", "laka"], ["صَدْرَكَ", "dadamu", "shadrak"]],
+        tr: "Bukankah Kami telah melapangkan dadamu (Muhammad)?" },
+      { words: [["وَوَضَعْنَا", "dan Kami telah menurunkan", "Wa wadha'nā"], ["عَنكَ", "darimu", "'anka"], ["وِزْرَكَ", "bebanmu", "wizrak"]],
+        tr: "dan Kami pun telah menurunkan bebanmu darimu," },
+      { words: [["ٱلَّذِىٓ", "yang", "Alladzī"], ["أَنقَضَ", "memberatkan", "anqadha"], ["ظَهْرَكَ", "punggungmu", "zhahrak"]],
+        tr: "yang memberatkan punggungmu," },
+      { words: [["وَرَفَعْنَا", "dan Kami tinggikan", "Wa rafa'nā"], ["لَكَ", "bagimu", "laka"], ["ذِكْرَكَ", "sebutan (nama)mu", "dzikrak"]],
+        tr: "dan Kami tinggikan sebutan (nama)mu bagimu." },
+      { words: [["فَإِنَّ", "maka sesungguhnya", "Fa inna"], ["مَعَ", "bersama", "ma'al"], ["ٱلْعُسْرِ", "kesulitan", "'usri"], ["يُسْرًا", "ada kemudahan", "yusrā"]],
+        tr: "Maka sesungguhnya beserta kesulitan ada kemudahan," },
+      { words: [["إِنَّ", "sesungguhnya", "Inna"], ["مَعَ", "bersama", "ma'al"], ["ٱلْعُسْرِ", "kesulitan", "'usri"], ["يُسْرًا", "ada kemudahan", "yusrā"]],
+        tr: "sesungguhnya beserta kesulitan itu ada kemudahan." },
+      { words: [["فَإِذَا", "maka apabila", "Fa idzā"], ["فَرَغْتَ", "engkau telah selesai", "faraghta"], ["فَٱنصَبْ", "tetaplah bekerja keras", "fanshab"]],
+        tr: "Maka apabila engkau telah selesai (dari sesuatu urusan), tetaplah bekerja keras (untuk urusan yang lain)," },
+      { words: [["وَإِلَىٰ", "dan kepada", "Wa ilā"], ["رَبِّكَ", "Tuhanmu", "rabbika"], ["فَٱرْغَب", "berharaplah", "farghab"]],
+        tr: "dan hanya kepada Tuhanmulah engkau berharap." }
+    ]
+  },
+  {
     id: 83,
     name: "Al-Muthaffifin",
     meaning: "Orang-orang yang Curang",
