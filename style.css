@@ -274,3 +274,32 @@ h2 { font-size: 1.35rem; color: var(--sea-dark); }
 .status-tag.warn { background: #fff1e3; color: #b8642f; }
 .activity.done .emo { background: #e3f4eb; }
 .report-btn { border: 2px dashed var(--sea); box-shadow: none; }
+
+/* ---------- penjelajahan cerdas ---------- */
+.btn.smart { background: #6b5bd2; box-shadow: 0 4px 0 #4b3ea3; }
+.btn.smart:active { box-shadow: 0 2px 0 #4b3ea3; }
+.btn.smart:disabled { background: #cfd8da; color: #8a9799; box-shadow: none; }
+.select {
+  font: inherit; font-size: 1rem; width: 100%; padding: 10px 12px; border-radius: 12px;
+  border: 2px solid var(--sand-dark); background: #fff; color: var(--ink);
+}
+.select.small { width: auto; min-width: 64px; padding: 6px 8px; text-align: center; }
+.kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kind {
+  font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer; color: var(--ink);
+  border: 2px solid var(--sand-dark); background: #fff; border-radius: 14px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 6px; text-align: left;
+}
+.kind.on { border-color: #6b5bd2; background: #efedfb; }
+.tracker { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+.t-dot {
+  min-width: 28px; height: 28px; padding: 0 4px; border-radius: 14px; display: grid; place-items: center;
+  font-size: .8rem; font-weight: 700; background: #e3e9eb; color: var(--muted);
+}
+.t-dot.ok { background: var(--good); color: #fff; }
+.t-dot.bad { background: var(--bad); color: #fff; }
+.t-dot.now { outline: 3px solid #6b5bd2; outline-offset: 1px; }
+.option:disabled { cursor: default; color: inherit; }
+.chip:disabled { cursor: default; }
+.slots .placed.missed { color: var(--bad); }
+.story-art.small { width: 120px; font-size: 3.4rem; }

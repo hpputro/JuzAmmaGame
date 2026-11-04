@@ -5,6 +5,13 @@ Anak berlayar bersama Pipo si penyu 🐢 dari pulau ke pulau. Setiap pulau = sat
 dan nama pulaunya diambil dari isi surat itu (mis. *Bukit Fajar* untuk Al-Falaq).
 
 ## Menu utama
+- **🧠 Penjelajahan Cerdas** – pilih surat, jenis kuis (Lanjut Ayat, Kata yang Hilang,
+  Susun Ayat, atau Pahami Arti), serta mulai dan sampai ayat. Ada satu soal untuk setiap
+  ayat dalam rentang itu, berurutan. Jika salah, jawaban yang benar ditunjukkan sebentar,
+  ayatnya ditandai "belum bisa", lalu langsung lanjut ke soal berikutnya. Setelah ayat
+  terakhir, ayat yang belum bisa diulang di putaran berikutnya sampai semuanya benar.
+  Deretan nomor ayat di atas soal menunjukkan statusnya (hijau = bisa, merah = belum,
+  abu-abu = belum dicoba). Pengaturan terakhir diingat.
 - **⛵ Mulai Berlayar** – jelajahi pulau satu per satu; tiap pulau berisi 9 tahap berurutan
   dan pulau berikutnya terbuka setelah pulau sebelumnya selesai.
 - **🧭 Pelayaran Mandiri** – semua surat dan semua aktivitas terbuka tanpa prasyarat.

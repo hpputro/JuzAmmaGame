@@ -27,6 +27,8 @@
   // Catatan Pelayaran Mandiri: { [surahId]: { [tahap]: { times, questions?, mistakes?, items? } } }
   const FREE_KEY = "pelayaran-juz-amma-free-v1";
   const freeLog = load(FREE_KEY, {});
+  // Pengaturan terakhir Penjelajahan Cerdas: { sid, kind, from, to }
+  const SMART_KEY = "pelayaran-juz-amma-smart-v1";
   const listenPrefs = Object.assign({ ayahRepeat: 1, packRepeat: 1 }, load(LISTEN_KEY, {}));
 
   const starsOf = (s) => (progress[s.id] && progress[s.id].stars) || 0;
@@ -221,10 +223,12 @@
       <h1>Pelayaran<br>Juz Amma</h1>
       <p>Berlayar bersama Pipo si penyu ${MASCOT} dari pulau ke pulau. Tiap pulau menyimpan satu surat!</p>
       <div class="spacer"></div>
+      <button class="btn menu smart" id="smart">🧠 Penjelajahan Cerdas<small>Pilih surat &amp; ayat, ulangi yang belum bisa</small></button>
       <button class="btn menu" id="start">⛵ Mulai Berlayar<small>Jelajahi pulau satu per satu</small></button>
       <button class="btn coral menu" id="free">🧭 Pelayaran Mandiri<small>Semua surat &amp; aktivitas terbuka</small></button>
       <button class="btn secondary menu" id="coll">🧺 Harta Laut<small>Koleksi oleh-oleh dari tiap pulau</small></button>
     </section>`, () => {
+      on("#smart", () => smartSetup());
       on("#start", map);
       on("#free", freeMap);
       on("#coll", collection);
@@ -623,6 +627,19 @@
     });
   }
 
+  /** Markup pilihan jawaban; pilihan yang punya audio mendapat tombol 🔊 di sampingnya. */
+  function optionsHtml(q, opts) {
+    const optClass = q.optionClass || (q.arabicOptions ? "ar" : "");
+    let html = "";
+    opts.forEach((o, i) => {
+      const btn = `<button class="option ${optClass}" data-i="${i}">${o.html}</button>`;
+      html += o.audio
+        ? `<div class="opt-row">${btn}<button class="icon-btn opt-play" data-play="${i}" aria-label="Dengar pilihan ini">🔊</button></div>`
+        : btn;
+    });
+    return html;
+  }
+
   // ---- Mesin kuis pilihan ganda (dipakai tahap 5, 6, 8) ----
   // q = { prompt, audio, autoplay, options: [{ html, correct }], arabicOptions, onCorrect }
   function mcQuiz(ses, stage, title, questions, qi, next) {
@@ -630,13 +647,7 @@
     const q = questions[qi];
     const opts = shuffle(q.options);
     let html = "";
-    const optClass = q.optionClass || (q.arabicOptions ? "ar" : "");
-    opts.forEach((o, i) => {
-      const btn = `<button class="option ${optClass}" data-i="${i}">${o.html}</button>`;
-      html += o.audio
-        ? `<div class="opt-row">${btn}<button class="icon-btn opt-play" data-play="${i}" aria-label="Dengar pilihan ini">🔊</button></div>`
-        : btn;
-    });
+    html = optionsHtml(q, opts);
 
     render(`${topbar(stageLabel(stage, s), title, `${qi + 1}/${questions.length}`)}
       ${progressBar(questions.length, qi)}
@@ -674,85 +685,88 @@
   }
 
   // ---- 5. Kuis Lanjut Ayat ----
+  /** Ayat yang bisa ditanya "ayat berikutnya": bukan ayat terakhir, dan bukan ayat kembar
+   *  (teks sama di tempat lain, mis. Al-Muthaffifin 9 & 20) karena lanjutannya ambigu. */
+  function candsNext(s) {
+    const texts = s.ayahs.map(arText);
+    return s.ayahs.map((_, i) => i).slice(0, -1)
+      .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
+  }
+  function buildNextQ(s, a) {
+    // pilihan berupa rujukan ayat {sid, n, ayah} agar bisa tampil transliterasi & audionya
+    const ref = (x, i) => ({ sid: x.id, n: i + 1, ayah: x.ayahs[i] });
+    const correct = ref(s, a + 1);
+    const same = s.ayahs.map((_, i) => ref(s, i)).filter((r) => r.n - 1 !== a && r.n - 1 !== a + 1);
+    const others = otherSurahs(s).flatMap((x) => x.ayahs.map((_, i) => ref(x, i)));
+    // ayat hampir kembar dengan jawaban (mis. Al-Insyirah 5 & 6) tidak dijadikan pengecoh
+    const wrong = distractors(correct, same, others, 2, (r) => coreText(r.ayah));
+    const opt = (r, ok) => ({
+      html: `<span class="opt-ar">${esc(arText(r.ayah))}</span><span class="opt-lt">${esc(latin(r.ayah))}</span>`,
+      audio: ayahUrl(r.sid, r.n),
+      correct: ok
+    });
+    return {
+      label: `Ayat ${a + 1} → ${a + 2}`,
+      prompt: `<p class="q-label">Dengarkan ayat ${a + 1}. Ayat berikutnya adalah…</p>
+        <p class="arabic">${esc(arText(s.ayahs[a]))}</p>
+        <p class="latin">${esc(latin(s.ayahs[a]))}</p>`,
+      audio: ayahUrl(s.id, a + 1),
+      autoplay: true,
+      optionClass: "ayah-opt",
+      options: [opt(correct, true)].concat(wrong.map((w) => opt(w, false))),
+      onCorrect: () => play(ayahUrl(s.id, a + 2))
+    };
+  }
   function quizNextAyah(ses) {
     const { s } = ses;
-    // ayat terakhir tidak punya lanjutan; ayat kembar (teks sama di tempat lain,
-    // mis. Al-Muthaffifin 9 & 20) dilewati karena lanjutannya jadi ambigu
-    const texts = s.ayahs.map(arText);
-    const cands = s.ayahs.map((_, i) => i).slice(0, -1)
-      .filter((i) => texts.indexOf(texts[i]) === texts.lastIndexOf(texts[i]));
-    const picks = pickIdx(cands, quizCount(ses, "next"));
-    const qs = picks.map((a) => {
-      // pilihan berupa rujukan ayat {sid, n, ayah} agar bisa tampil transliterasi & audionya
-      const ref = (x, i) => ({ sid: x.id, n: i + 1, ayah: x.ayahs[i] });
-      const correct = ref(s, a + 1);
-      const same = s.ayahs.map((_, i) => ref(s, i)).filter((r) => r.n - 1 !== a && r.n - 1 !== a + 1);
-      const others = otherSurahs(s).flatMap((x) => x.ayahs.map((_, i) => ref(x, i)));
-      // ayat hampir kembar dengan jawaban (mis. Al-Insyirah 5 & 6) tidak dijadikan pengecoh
-      const wrong = distractors(correct, same, others, 2, (r) => coreText(r.ayah));
-      const opt = (r, ok) => ({
-        html: `<span class="opt-ar">${esc(arText(r.ayah))}</span><span class="opt-lt">${esc(latin(r.ayah))}</span>`,
-        audio: ayahUrl(r.sid, r.n),
-        correct: ok
-      });
-      return {
-        label: `Ayat ${a + 1} → ${a + 2}`,
-        prompt: `<p class="q-label">Dengarkan ayat ${a + 1}. Ayat berikutnya adalah…</p>
-          <p class="arabic">${esc(arText(s.ayahs[a]))}</p>
-          <p class="latin">${esc(latin(s.ayahs[a]))}</p>`,
-        audio: ayahUrl(s.id, a + 1),
-        autoplay: true,
-        optionClass: "ayah-opt",
-        options: [opt(correct, true)].concat(wrong.map((w) => opt(w, false))),
-        onCorrect: () => play(ayahUrl(s.id, a + 2))
-      };
-    });
+    const qs = pickIdx(candsNext(s), quizCount(ses, "next")).map((a) => buildNextQ(s, a));
     mcQuiz(ses, 5, "Pilih ayat berikutnya", qs, 0, () => go(ses, 5, () => quizMissingWord(ses)));
   }
 
   // ---- 6. Kuis Kata yang Hilang ----
+  /** Ayat dengan minimal 2 kata (dipakai Kata yang Hilang & Susun Ayat). */
+  const candsMultiWord = (s) => s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
+  function buildMissingQ(s, a) {
+    const ayah = s.ayahs[a];
+    const blank = Math.floor(Math.random() * ayah.words.length);
+    const correct = ayah.words[blank][0];
+    // jangan pakai kata yang masih terlihat di ayat ini sebagai pengecoh
+    const visible = ayah.words.map((w) => w[0]);
+    const same = s.ayahs.flatMap((x) => x.words.map((w) => w[0])).filter((w) => !visible.includes(w));
+    const others = otherSurahs(s).flatMap((x) => x.ayahs.flatMap((y) => y.words.map((w) => w[0])));
+    const wrong = distractors(correct, same, others.filter((w) => !visible.includes(w)), 2);
+    const ar = ayah.words.map((w, i) => i === blank ? '<span class="blank">؟</span>' : esc(w[0])).join(" ");
+    const lt = ayah.words.map((w, i) => i === blank ? '<span class="blank">___</span>' : esc(w[2])).join(" ");
+    const reveal = () => {
+      $("#q-ar").textContent = arText(ayah);
+      $("#q-lt").textContent = latin(ayah);
+      $("#q-tr").textContent = ayah.tr;
+      $("#q-tr").classList.add("show");
+    };
+    return {
+      label: `Ayat ${a + 1}`,
+      prompt: `<p class="q-label">Ayat ${a + 1}: kata apa yang hilang?</p>
+        <p class="arabic" id="q-ar">${ar}</p>
+        <p class="latin" id="q-lt">${lt}</p>
+        <p class="translation" id="q-tr">🔒 Arti ayat muncul setelah jawabanmu benar</p>`,
+      audio: ayahUrl(s.id, a + 1),
+      autoplay: false,
+      arabicOptions: true,
+      options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false }))),
+      reveal,
+      onCorrect: () => { reveal(); play(wordUrl(s.id, a + 1, blank + 1)); }
+    };
+  }
   function quizMissingWord(ses) {
     const { s } = ses;
-    const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    const picks = pickIdx(cands, quizCount(ses, "missing"));
-    const qs = picks.map((a) => {
-      const ayah = s.ayahs[a];
-      const blank = Math.floor(Math.random() * ayah.words.length);
-      const correct = ayah.words[blank][0];
-      // jangan pakai kata yang masih terlihat di ayat ini sebagai pengecoh
-      const visible = ayah.words.map((w) => w[0]);
-      const same = s.ayahs.flatMap((x) => x.words.map((w) => w[0])).filter((w) => !visible.includes(w));
-      const others = otherSurahs(s).flatMap((x) => x.ayahs.flatMap((y) => y.words.map((w) => w[0])));
-      const wrong = distractors(correct, same, others.filter((w) => !visible.includes(w)), 2);
-      const ar = ayah.words.map((w, i) => i === blank ? '<span class="blank">؟</span>' : esc(w[0])).join(" ");
-      const lt = ayah.words.map((w, i) => i === blank ? '<span class="blank">___</span>' : esc(w[2])).join(" ");
-      return {
-        label: `Ayat ${a + 1}`,
-        prompt: `<p class="q-label">Ayat ${a + 1}: kata apa yang hilang?</p>
-          <p class="arabic" id="q-ar">${ar}</p>
-          <p class="latin" id="q-lt">${lt}</p>
-          <p class="translation" id="q-tr">🔒 Arti ayat muncul setelah jawabanmu benar</p>`,
-        audio: ayahUrl(s.id, a + 1),
-        autoplay: false,
-        arabicOptions: true,
-        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false }))),
-        onCorrect: () => {
-          $("#q-ar").textContent = arText(ayah);
-          $("#q-lt").textContent = latin(ayah);
-          $("#q-tr").textContent = ayah.tr;
-          $("#q-tr").classList.add("show");
-          play(wordUrl(s.id, a + 1, blank + 1));
-        }
-      };
-    });
+    const qs = pickIdx(candsMultiWord(s), quizCount(ses, "missing")).map((a) => buildMissingQ(s, a));
     mcQuiz(ses, 6, "Lengkapi ayatnya", qs, 0, () => go(ses, 6, () => startArrange(ses)));
   }
 
   // ---- 7. Kuis Susun Ayat ----
   function startArrange(ses) {
     const { s } = ses;
-    const cands = s.ayahs.map((_, i) => i).filter((i) => s.ayahs[i].words.length >= 2);
-    arrange(ses, pickIdx(cands, quizCount(ses, "arrange")), 0);
+    arrange(ses, pickIdx(candsMultiWord(s), quizCount(ses, "arrange")), 0);
   }
   function arrange(ses, picks, q) {
     const { s } = ses;
@@ -802,26 +816,26 @@
   }
 
   // ---- 8. Kuis Pahami Arti ----
+  const candsAll = (s) => s.ayahs.map((_, i) => i);
+  function buildMeaningQ(s, a) {
+    // pengecoh dipilih per ayat dan dibedakan dengan coreText, supaya arti ayat (hampir)
+    // kembar tidak muncul dua kali atau bersaing dengan jawaban (mis. Al-Insyirah 5 & 6)
+    const correctAyah = s.ayahs[a];
+    const same = s.ayahs.filter((x) => x !== correctAyah);
+    const others = otherSurahs(s).flatMap((x) => x.ayahs);
+    const wrong = distractors(correctAyah, same, others, 2, coreText).map((x) => x.tr);
+    return {
+      label: `Ayat ${a + 1}`,
+      prompt: `<p class="q-label">Dengarkan, lalu pilih artinya</p>
+        <p class="arabic">${esc(arText(correctAyah))}</p>`,
+      audio: ayahUrl(s.id, a + 1),
+      autoplay: true,
+      options: [{ html: esc(correctAyah.tr), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false })))
+    };
+  }
   function quizMeaning(ses) {
     const { s } = ses;
-    const picks = pickIdx(s.ayahs.map((_, i) => i), quizCount(ses, "meaning"));
-    const qs = picks.map((a) => {
-      // pengecoh dipilih per ayat dan dibedakan dengan coreText, supaya arti ayat (hampir)
-      // kembar tidak muncul dua kali atau bersaing dengan jawaban (mis. Al-Insyirah 5 & 6)
-      const correctAyah = s.ayahs[a];
-      const correct = correctAyah.tr;
-      const same = s.ayahs.filter((x) => x !== correctAyah);
-      const others = otherSurahs(s).flatMap((x) => x.ayahs);
-      const wrong = distractors(correctAyah, same, others, 2, coreText).map((x) => x.tr);
-      return {
-        label: `Ayat ${a + 1}`,
-        prompt: `<p class="q-label">Dengarkan, lalu pilih artinya</p>
-          <p class="arabic">${esc(arText(s.ayahs[a]))}</p>`,
-        audio: ayahUrl(s.id, a + 1),
-        autoplay: true,
-        options: [{ html: esc(correct), correct: true }].concat(wrong.map((w) => ({ html: esc(w), correct: false })))
-      };
-    });
+    const qs = pickIdx(candsAll(s), quizCount(ses, "meaning")).map((a) => buildMeaningQ(s, a));
     mcQuiz(ses, 8, "Pilih arti yang benar", qs, 0, () => go(ses, 8, () => result(ses)));
   }
 
@@ -858,6 +872,316 @@
     </section>`, () => {
       on("#map", map);
       on("#again", () => startSurah(s));
+    });
+  }
+
+  // =====================================================================
+  // PENJELAJAHAN CERDAS
+  // Pilih surat, jenis kuis, dan rentang ayat. Satu soal per ayat, berurutan.
+  // Jawaban salah → jawaban benar ditunjukkan sebentar, ayat ditandai "belum bisa",
+  // lalu langsung lanjut. Setelah ayat terakhir, ayat yang belum bisa diulang
+  // (putaran berikutnya) sampai semuanya benar.
+  // =====================================================================
+  const SMART_KINDS = {
+    next: { name: "Lanjut Ayat", emoji: "➡️", cands: candsNext, build: buildNextQ, title: "Pilih ayat berikutnya" },
+    missing: { name: "Kata yang Hilang", emoji: "🧩", cands: candsMultiWord, build: buildMissingQ, title: "Lengkapi ayatnya" },
+    arrange: { name: "Susun Ayat", emoji: "🔤", cands: candsMultiWord, build: null, title: "Susun ayatnya" },
+    meaning: { name: "Pahami Arti", emoji: "💬", cands: candsAll, build: buildMeaningQ, title: "Pilih arti yang benar" }
+  };
+  const SMART_DELAY_RIGHT = 1000; // jeda sebelum soal berikutnya (ms)
+  const SMART_DELAY_WRONG = 1800;
+  /** Ayat (indeks) dalam rentang yang bisa dijadikan soal untuk jenis kuis ini. */
+  const smartEligible = (s, kind, from, to) =>
+    SMART_KINDS[kind].cands(s).filter((i) => i >= from - 1 && i <= to - 1);
+
+  function smartSetup(prev) {
+    const saved = prev || load(SMART_KEY, null) || {};
+    let si = Math.max(0, SURAHS.findIndex((x) => x.id === saved.sid));
+    const cfg = {
+      kind: SMART_KINDS[saved.kind] ? saved.kind : "next",
+      from: saved.from || 1,
+      to: saved.to || SURAHS[si].ayahs.length
+    };
+    const clampRange = () => {
+      const n = SURAHS[si].ayahs.length;
+      cfg.from = Math.min(Math.max(1, cfg.from), n);
+      cfg.to = Math.min(Math.max(cfg.from, cfg.to), n);
+    };
+    clampRange();
+
+    let surahOpts = "";
+    SURAHS.forEach((x, i) => { surahOpts += `<option value="${i}">${esc(x.name)} (${x.ayahs.length} ayat)</option>`; });
+    let kindBtns = "";
+    Object.keys(SMART_KINDS).forEach((k) => {
+      kindBtns += `<button class="kind" data-kind="${k}"><span>${SMART_KINDS[k].emoji}</span>${esc(SMART_KINDS[k].name)}</button>`;
+    });
+
+    render(`${topbar("Penjelajahan Cerdas", "Atur penjelajahan")}
+      <div class="story-talk"><div class="mascot">${MASCOT}</div>
+        <div class="bubble">Pilih surat dan ayatnya. Ayat yang belum bisa akan kita ulang sampai benar semua!</div></div>
+      <div class="card settings">
+        <h3>📖 Surat</h3>
+        <select id="surah" class="select">${surahOpts}</select>
+        <h3>🎯 Jenis kuis</h3>
+        <div class="kinds">${kindBtns}</div>
+        <h3>🔢 Rentang ayat</h3>
+        <div class="stepper"><span>Mulai ayat</span><div class="stepper-ctl">
+          <button class="icon-btn" data-step="from" data-d="-1" aria-label="Kurangi">−</button>
+          <select id="from" class="select small"></select>
+          <button class="icon-btn" data-step="from" data-d="1" aria-label="Tambah">+</button></div></div>
+        <div class="stepper"><span>Sampai ayat</span><div class="stepper-ctl">
+          <button class="icon-btn" data-step="to" data-d="-1" aria-label="Kurangi">−</button>
+          <select id="to" class="select small"></select>
+          <button class="icon-btn" data-step="to" data-d="1" aria-label="Tambah">+</button></div></div>
+        <p class="translation" id="summary"></p>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn smart" id="go">🧠 Mulai menjelajah</button>`, () => {
+      bindBack(home);
+      const sel = $("#surah");
+      sel.value = String(si);
+      const fillAyahSelects = () => {
+        const n = SURAHS[si].ayahs.length;
+        let o = "";
+        for (let i = 1; i <= n; i++) o += `<option value="${i}">${i}</option>`;
+        $("#from").innerHTML = o;
+        $("#to").innerHTML = o;
+      };
+      const refresh = () => {
+        clampRange();
+        $("#from").value = String(cfg.from);
+        $("#to").value = String(cfg.to);
+        $$(".kind").forEach((b) => b.classList.toggle("on", b.dataset.kind === cfg.kind));
+        const count = smartEligible(SURAHS[si], cfg.kind, cfg.from, cfg.to).length;
+        const total = cfg.to - cfg.from + 1;
+        let note = "";
+        if (count < total) {
+          note = cfg.kind === "next"
+            ? " (ayat terakhir surat & ayat kembar tidak bisa ditanya lanjutannya)"
+            : " (ayat yang hanya satu kata dilewati)";
+        }
+        $("#summary").textContent = count
+          ? `${count} soal, satu untuk tiap ayat${note}.`
+          : "Tidak ada ayat yang bisa dijadikan soal untuk jenis kuis ini. Coba ubah rentang ayatnya.";
+        $("#go").disabled = count === 0;
+      };
+      fillAyahSelects();
+      refresh();
+      sel.addEventListener("change", () => {
+        si = Number(sel.value);
+        cfg.from = 1;
+        cfg.to = SURAHS[si].ayahs.length;
+        fillAyahSelects();
+        refresh();
+      });
+      $("#from").addEventListener("change", () => {
+        cfg.from = Number($("#from").value);
+        if (cfg.to < cfg.from) cfg.to = cfg.from;
+        refresh();
+      });
+      $("#to").addEventListener("change", () => {
+        cfg.to = Number($("#to").value);
+        if (cfg.from > cfg.to) cfg.from = cfg.to;
+        refresh();
+      });
+      $$("[data-step]").forEach((b) => b.addEventListener("click", () => {
+        const key = b.dataset.step;
+        cfg[key] += Number(b.dataset.d);
+        if (key === "from" && cfg.from > cfg.to) cfg.to = cfg.from;
+        if (key === "to" && cfg.to < cfg.from) cfg.from = Math.max(1, cfg.to);
+        refresh();
+      }));
+      $$(".kind").forEach((b) => b.addEventListener("click", () => { cfg.kind = b.dataset.kind; refresh(); }));
+      on("#go", () => {
+        const s = SURAHS[si];
+        const saveCfg = { sid: s.id, kind: cfg.kind, from: cfg.from, to: cfg.to };
+        save(SMART_KEY, saveCfg);
+        smartStart(saveCfg);
+      });
+    });
+  }
+
+  function smartStart(cfg) {
+    const s = SURAHS.find((x) => x.id === cfg.sid);
+    const ayahs = smartEligible(s, cfg.kind, cfg.from, cfg.to);
+    const st = {
+      s, cfg, kind: cfg.kind, ayahs,
+      status: {}, // indeks ayat → "todo" | "ok" | "bad"
+      wrong: {}, // indeks ayat → berapa kali salah
+      queue: ayahs.slice(), qi: 0, round: 1, answers: 0, mistakes: 0
+    };
+    ayahs.forEach((a) => { st.status[a] = "todo"; st.wrong[a] = 0; });
+    smartQuestion(st);
+  }
+
+  /** Deretan nomor ayat: hijau = sudah bisa, merah = belum bisa, abu-abu = belum dicoba. */
+  function smartTracker(st, current) {
+    let h = '<div class="tracker" aria-label="Status ayat">';
+    st.ayahs.forEach((a) => {
+      h += `<span class="t-dot ${st.status[a]} ${a === current ? "now" : ""}">${a + 1}</span>`;
+    });
+    return h + "</div>";
+  }
+
+  function smartHeader(st, a) {
+    const k = SMART_KINDS[st.kind];
+    const okCount = st.ayahs.filter((x) => st.status[x] === "ok").length;
+    return `${topbar(`Penjelajahan Cerdas · ${k.name} · ${st.s.name}`, `Putaran ${st.round} · Ayat ${a + 1}`, `${st.qi + 1}/${st.queue.length}`)}
+      ${smartTracker(st, a)}
+      <p class="status">✅ ${okCount} dari ${st.ayahs.length} ayat sudah bisa</p>`;
+  }
+
+  function smartAnswer(st, a, right) {
+    st.answers++;
+    if (right) {
+      st.status[a] = "ok";
+    } else {
+      st.status[a] = "bad";
+      st.wrong[a]++;
+      st.mistakes++;
+    }
+    const myRun = runId;
+    setTimeout(() => { if (myRun === runId) smartNext(st); }, right ? SMART_DELAY_RIGHT : SMART_DELAY_WRONG);
+  }
+
+  function smartNext(st) {
+    st.qi++;
+    if (st.qi < st.queue.length) { smartQuestion(st); return; }
+    const left = st.ayahs.filter((a) => st.status[a] !== "ok");
+    if (!left.length) { smartDone(st); return; }
+    smartRoundBreak(st, left);
+  }
+
+  function smartQuestion(st) {
+    if (st.kind === "arrange") { smartArrange(st); return; }
+    const { s } = st;
+    const a = st.queue[st.qi];
+    const q = SMART_KINDS[st.kind].build(s, a);
+    const opts = shuffle(q.options);
+    render(`${smartHeader(st, a)}
+      <div class="card question">
+        ${q.prompt}
+        ${q.audio ? '<button class="btn secondary small" id="listen">▶ Dengar ayatnya</button>' : ""}
+      </div>
+      <div class="options">${optionsHtml(q, opts)}</div>`, () => {
+      bindBack(() => smartSetup());
+      if (q.audio) {
+        on("#listen", () => play(q.audio));
+        if (q.autoplay) play(q.audio);
+      }
+      $$("[data-play]").forEach((b) => b.addEventListener("click", () => play(opts[Number(b.dataset.play)].audio)));
+      let answered = false;
+      $$(".option").forEach((el) => el.addEventListener("click", () => {
+        if (answered) return;
+        answered = true;
+        const right = opts[Number(el.dataset.i)].correct;
+        $$(".option").forEach((x) => { x.disabled = true; });
+        if (right) {
+          el.classList.add("right");
+          toast("✅ Benar!");
+        } else {
+          el.classList.add("wrong");
+          // tunjukkan jawaban yang benar, lalu langsung lanjut
+          $$(".option").forEach((x) => { if (opts[Number(x.dataset.i)].correct) x.classList.add("right"); });
+          toast("Belum tepat. Ayat ini kita ulang nanti 🔁");
+        }
+        if (q.reveal) q.reveal();
+        smartAnswer(st, a, right);
+      }));
+    });
+  }
+
+  function smartArrange(st) {
+    const { s } = st;
+    const a = st.queue[st.qi];
+    const ayah = s.ayahs[a];
+    let order = shuffle(ayah.words.map((_, i) => i));
+    if (order.length > 1 && order.every((v, i) => v === i)) order.reverse();
+    let bank = "";
+    order.forEach((i) => { bank += `<button class="chip" data-w="${i}">${esc(ayah.words[i][0])}</button>`; });
+    render(`${smartHeader(st, a)}
+      <p class="translation show">Artinya: ${esc(ayah.tr)}</p>
+      <div class="slots" id="slots"></div>
+      <p class="translation">Ketuk kata sesuai urutan bacaan (mulai dari kanan ➜ kiri)</p>
+      <div class="bank">${bank}</div>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="listen">▶ Contoh bacaan</button>`, () => {
+      bindBack(() => smartSetup());
+      on("#listen", () => play(ayahUrl(s.id, a + 1)));
+      let pos = 0, finished = false;
+      $$(".chip").forEach((el) => el.addEventListener("click", () => {
+        if (finished || el.classList.contains("used")) return;
+        const i = Number(el.dataset.w);
+        if (ayah.words[i][0] === ayah.words[pos][0]) {
+          el.classList.add("used");
+          $("#slots").insertAdjacentHTML("beforeend", `<span class="placed">${esc(ayah.words[pos][0])}</span>`);
+          pos++;
+          if (pos === ayah.words.length) {
+            finished = true;
+            toast("✅ Benar!");
+            smartAnswer(st, a, true);
+          }
+        } else {
+          finished = true;
+          el.classList.add("wrong");
+          // tampilkan sisa ayat yang benar, lalu langsung lanjut
+          ayah.words.slice(pos).forEach((w) => {
+            $("#slots").insertAdjacentHTML("beforeend", `<span class="placed missed">${esc(w[0])}</span>`);
+          });
+          $$(".chip").forEach((x) => { x.disabled = true; });
+          toast("Belum tepat. Ayat ini kita ulang nanti 🔁");
+          smartAnswer(st, a, false);
+        }
+      }));
+    });
+  }
+
+  function smartRoundBreak(st, left) {
+    const okCount = st.ayahs.length - left.length;
+    render(`${topbar(`Penjelajahan Cerdas · ${SMART_KINDS[st.kind].name} · ${st.s.name}`, `Putaran ${st.round} selesai`)}
+      ${smartTracker(st, -1)}
+      <div class="story-art small" aria-hidden="true">🔁</div>
+      <div class="story-talk"><div class="mascot">${MASCOT}</div>
+        <div class="bubble">${okCount ? `Hebat, ${okCount} ayat sudah bisa! ` : ""}Masih ada <b>${left.length} ayat</b> yang belum: ayat ${left.map((x) => x + 1).join(", ")}. Yuk, kita ulang sampai bisa!</div></div>
+      <div class="spacer"></div>
+      <button class="btn smart" id="go">Mulai putaran ${st.round + 1} ›</button>`, () => {
+      bindBack(() => smartSetup());
+      on("#go", () => {
+        st.round++;
+        st.queue = left;
+        st.qi = 0;
+        smartQuestion(st);
+      });
+    });
+  }
+
+  function smartDone(st) {
+    const first = st.ayahs.filter((a) => st.wrong[a] === 0).length;
+    let rows = "";
+    st.ayahs.forEach((a) => {
+      const w = st.wrong[a];
+      rows += `<tr><td>Ayat ${a + 1}</td><td class="${w ? "bad" : "good"}">${w ? `salah ${w}×` : "✓"}</td><td>${w ? `putaran ${w + 1}` : "langsung bisa"}</td></tr>`;
+    });
+    render(`<section class="screen result">
+      <small class="stage-tag">Penjelajahan Cerdas · ${esc(SMART_KINDS[st.kind].name)} · ${esc(st.s.name)}</small>
+      <h2>Semua ayat sudah bisa! 🎉</h2>
+      <div class="big-stars">🧠</div>
+      <p>Ayat ${st.cfg.from}–${st.cfg.to} · ${st.round} putaran<br>
+        <small>${st.answers} jawaban · ${first} ayat langsung bisa · ${st.mistakes}× salah</small></p>
+      <div class="card report">
+        <table>
+          <thead><tr><th>Ayat</th><th>Salah</th><th>Bisa di</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn smart" id="again">↻ Jelajahi lagi</button>
+      <button class="btn secondary" id="setup">⚙️ Ubah pengaturan</button>
+      <button class="btn secondary" id="home">🏠 Beranda</button>
+    </section>`, () => {
+      on("#again", () => smartStart(st.cfg));
+      on("#setup", () => smartSetup(st.cfg));
+      on("#home", home);
     });
   }
 
