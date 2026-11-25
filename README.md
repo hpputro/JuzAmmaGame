@@ -55,7 +55,7 @@ Pulau berikutnya terbuka setelah pulau sebelumnya selesai. Progres dan pengatura
 pengulangan disimpan di browser (localStorage).
 
 ## Isi saat ini
-An-Nas, Al-Falaq, Al-Ikhlas, Al-Kautsar, Al-'Asr, Al-Bayyinah, Al-'Alaq, Al-Insyirah, Al-Muthaffifin. Tambah surat di `js/data.js`.
+An-Nas, Al-Falaq, Al-Ikhlas, Al-Kautsar, Al-'Asr, Al-Bayyinah, Al-'Alaq, Al-Insyirah, Al-Lail, Al-Muthaffifin. Tambah surat di `js/data.js`.
 
 ## Menjalankan
 Buka `index.html` di browser, atau jalankan server statis:
