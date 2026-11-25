@@ -27,7 +27,7 @@
   // Catatan Pelayaran Mandiri: { [surahId]: { [tahap]: { times, questions?, mistakes?, items? } } }
   const FREE_KEY = "pelayaran-juz-amma-free-v1";
   const freeLog = load(FREE_KEY, {});
-  // Pengaturan terakhir Penjelajahan Cerdas: { sid, kind, from, to }
+  // Pengaturan terakhir Pelayaran Cerdas: { sid, kind, from, to }
   const SMART_KEY = "pelayaran-juz-amma-smart-v1";
   const listenPrefs = Object.assign({ ayahRepeat: 1, packRepeat: 1 }, load(LISTEN_KEY, {}));
 
@@ -223,14 +223,14 @@
       <h1>Pelayaran<br>Juz Amma</h1>
       <p>Berlayar bersama Pipo si penyu ${MASCOT} dari pulau ke pulau. Tiap pulau menyimpan satu surat!</p>
       <div class="spacer"></div>
-      <button class="btn menu smart" id="smart">🧠 Penjelajahan Cerdas<small>Pilih surat &amp; ayat, ulangi yang belum bisa</small></button>
-      <button class="btn menu" id="start">⛵ Mulai Berlayar<small>Jelajahi pulau satu per satu</small></button>
+      <button class="btn menu" id="start">⛵ Mulai Berlayar<small>Berlayar dari pulau ke pulau, satu per satu</small></button>
       <button class="btn coral menu" id="free">🧭 Pelayaran Mandiri<small>Semua surat &amp; aktivitas terbuka</small></button>
+      <button class="btn menu smart" id="smart">🧠 Pelayaran Cerdas<small>Pilih surat &amp; ayat, ulangi yang belum bisa</small></button>
       <button class="btn secondary menu" id="coll">🧺 Harta Laut<small>Koleksi oleh-oleh dari tiap pulau</small></button>
     </section>`, () => {
-      on("#smart", () => smartSetup());
       on("#start", map);
       on("#free", freeMap);
+      on("#smart", () => smartSetup());
       on("#coll", collection);
     });
   }
@@ -876,7 +876,7 @@
   }
 
   // =====================================================================
-  // PENJELAJAHAN CERDAS
+  // PELAYARAN CERDAS
   // Pilih surat, jenis kuis, dan rentang ayat. Satu soal per ayat, berurutan.
   // Jawaban salah → jawaban benar ditunjukkan sebentar, ayat ditandai "belum bisa",
   // lalu langsung lanjut. Setelah ayat terakhir, ayat yang belum bisa diulang
@@ -916,7 +916,7 @@
       kindBtns += `<button class="kind" data-kind="${k}"><span>${SMART_KINDS[k].emoji}</span>${esc(SMART_KINDS[k].name)}</button>`;
     });
 
-    render(`${topbar("Penjelajahan Cerdas", "Atur penjelajahan")}
+    render(`${topbar("Pelayaran Cerdas", "Atur pelayaran")}
       <div class="story-talk"><div class="mascot">${MASCOT}</div>
         <div class="bubble">Pilih surat dan ayatnya. Ayat yang belum bisa akan kita ulang sampai benar semua!</div></div>
       <div class="card settings">
@@ -936,7 +936,7 @@
         <p class="translation" id="summary"></p>
       </div>
       <div class="spacer"></div>
-      <button class="btn smart" id="go">🧠 Mulai menjelajah</button>`, () => {
+      <button class="btn smart" id="go">🧠 Mulai berlayar</button>`, () => {
       bindBack(home);
       const sel = $("#surah");
       sel.value = String(si);
@@ -1026,7 +1026,7 @@
   function smartHeader(st, a) {
     const k = SMART_KINDS[st.kind];
     const okCount = st.ayahs.filter((x) => st.status[x] === "ok").length;
-    return `${topbar(`Penjelajahan Cerdas · ${k.name} · ${st.s.name}`, `Putaran ${st.round} · Ayat ${a + 1}`, `${st.qi + 1}/${st.queue.length}`)}
+    return `${topbar(`Pelayaran Cerdas · ${k.name} · ${st.s.name}`, `Putaran ${st.round} · Ayat ${a + 1}`, `${st.qi + 1}/${st.queue.length}`)}
       ${smartTracker(st, a)}
       <p class="status">✅ ${okCount} dari ${st.ayahs.length} ayat sudah bisa</p>`;
   }
@@ -1138,7 +1138,7 @@
 
   function smartRoundBreak(st, left) {
     const okCount = st.ayahs.length - left.length;
-    render(`${topbar(`Penjelajahan Cerdas · ${SMART_KINDS[st.kind].name} · ${st.s.name}`, `Putaran ${st.round} selesai`)}
+    render(`${topbar(`Pelayaran Cerdas · ${SMART_KINDS[st.kind].name} · ${st.s.name}`, `Putaran ${st.round} selesai`)}
       ${smartTracker(st, -1)}
       <div class="story-art small" aria-hidden="true">🔁</div>
       <div class="story-talk"><div class="mascot">${MASCOT}</div>
@@ -1163,7 +1163,7 @@
       rows += `<tr><td>Ayat ${a + 1}</td><td class="${w ? "bad" : "good"}">${w ? `salah ${w}×` : "✓"}</td><td>${w ? `putaran ${w + 1}` : "langsung bisa"}</td></tr>`;
     });
     render(`<section class="screen result">
-      <small class="stage-tag">Penjelajahan Cerdas · ${esc(SMART_KINDS[st.kind].name)} · ${esc(st.s.name)}</small>
+      <small class="stage-tag">Pelayaran Cerdas · ${esc(SMART_KINDS[st.kind].name)} · ${esc(st.s.name)}</small>
       <h2>Semua ayat sudah bisa! 🎉</h2>
       <div class="big-stars">🧠</div>
       <p>Ayat ${st.cfg.from}–${st.cfg.to} · ${st.round} putaran<br>
@@ -1175,13 +1175,11 @@
         </table>
       </div>
       <div class="spacer"></div>
-      <button class="btn smart" id="again">↻ Jelajahi lagi</button>
-      <button class="btn secondary" id="setup">⚙️ Ubah pengaturan</button>
-      <button class="btn secondary" id="home">🏠 Beranda</button>
+      <button class="btn smart" id="again">⛵ Berlayar Lagi</button>
+      <button class="btn secondary" id="setup">🧭 Ganti Pelayaran</button>
     </section>`, () => {
       on("#again", () => smartStart(st.cfg));
       on("#setup", () => smartSetup(st.cfg));
-      on("#home", home);
     });
   }
 

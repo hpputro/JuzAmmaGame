@@ -275,7 +275,7 @@ h2 { font-size: 1.35rem; color: var(--sea-dark); }
 .activity.done .emo { background: #e3f4eb; }
 .report-btn { border: 2px dashed var(--sea); box-shadow: none; }
 
-/* ---------- penjelajahan cerdas ---------- */
+/* ---------- pelayaran cerdas ---------- */
 .btn.smart { background: #6b5bd2; box-shadow: 0 4px 0 #4b3ea3; }
 .btn.smart:active { box-shadow: 0 2px 0 #4b3ea3; }
 .btn.smart:disabled { background: #cfd8da; color: #8a9799; box-shadow: none; }
